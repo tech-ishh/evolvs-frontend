@@ -106,7 +106,7 @@ function describeSubmitError(errors = []) {
     .join(" ");
 
   const text = details.toLowerCase();
-    if (errors.some((item) => item.status === 404) && text.includes("profile")) {
+  if (errors.some((item) => item.status === 404) && text.includes("profile")) {
     return {
       message: "Your profile does not exist yet. Please try again to create it.",
     };
@@ -172,7 +172,7 @@ function describeSubmitError(errors = []) {
 }
 
 export default function Onboarding() {
-  const [step, setStep] = useState(1); 
+  const [step, setStep] = useState(1);
   const [draft, setDraft] = useState(loadDraft);
   const [showErrors, setShowErrors] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -184,13 +184,13 @@ export default function Onboarding() {
   const [submitDetail, setSubmitDetail] = useState('');
   const currentUser = authService.getCurrentUser();
 
-const handleLogout = () => {
-  authService.logout();
-  sessionStorage.removeItem('evolv-edit-profile');
-  try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
-  invalidateProfile();
-  navigate('/login');
-};
+  const handleLogout = () => {
+    authService.logout();
+    sessionStorage.removeItem('evolv-edit-profile');
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    invalidateProfile();
+    navigate('/login');
+  };
 
   const [phase, setPhase] = useState('idle');
   const pendingStepRef = useRef(null);
@@ -209,13 +209,13 @@ const handleLogout = () => {
 
     let cancelled = false;
     guardOnboardingRoute()
-  .then((ok) => {
-    if (!cancelled && ok) setChecking(false);
-  })
-  .catch((err) => {
-    console.error('[Onboarding] guard failed:', err);
-    if (!cancelled) setChecking(false);
-  });
+      .then((ok) => {
+        if (!cancelled && ok) setChecking(false);
+      })
+      .catch((err) => {
+        console.error('[Onboarding] guard failed:', err);
+        if (!cancelled) setChecking(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -339,36 +339,36 @@ const handleLogout = () => {
     navigate(isEdit ? '/profile' : '/explore-gems');
   }, [draft, isEdit]);
 
- useEffect(() => {
-  let cancelled = false;
-  const editing = sessionStorage.getItem('evolv-edit-profile') === '1';
+  useEffect(() => {
+    let cancelled = false;
+    const editing = sessionStorage.getItem('evolv-edit-profile') === '1';
 
-  // New user: this is CREATE mode, don't load anything.
-  if (!editing) {
-    setIsEdit(false);
-    setLoadingEdit(false);
-    return undefined;
-  }
-
-  // Came from "Edit Profile": load the saved profile.
-  (async () => {
-    try {
-      invalidateProfile(); // always read fresh data
-      const saved = await profileService.loadDraftFromBackend();
-      if (cancelled) return;
-      if (saved) {
-        setDraft(saved);
-        setIsEdit(true);
-      }
-    } catch (err) {
-      console.error('[Onboarding] Could not load profile for editing', err);
-    } finally {
-      if (!cancelled) setLoadingEdit(false);
+    // New user: this is CREATE mode, don't load anything.
+    if (!editing) {
+      setIsEdit(false);
+      setLoadingEdit(false);
+      return undefined;
     }
-  })();
 
-  return () => { cancelled = true; };
-}, []);
+    // Came from "Edit Profile": load the saved profile.
+    (async () => {
+      try {
+        invalidateProfile(); // always read fresh data
+        const saved = await profileService.loadDraftFromBackend();
+        if (cancelled) return;
+        if (saved) {
+          setDraft(saved);
+          setIsEdit(true);
+        }
+      } catch (err) {
+        console.error('[Onboarding] Could not load profile for editing', err);
+      } finally {
+        if (!cancelled) setLoadingEdit(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, []);
   if (checking) return <div>Loading…</div>;
 
   return (
@@ -454,7 +454,12 @@ const handleLogout = () => {
               {gateReason && !canContinue && (
                 <span className="ob-gate-reason">{gateReason}</span>
               )}
-              {submitError && !isComplete && <span className="ob-inline-error" role="alert">{submitError}</span>}
+              {submitError && !isComplete && (
+                <span className="ob-inline-error" role="alert">
+                  {submitError}
+                  {submitDetail && <small style={{ display: 'block', opacity: 0.7 }}>{submitDetail}</small>}
+                </span>
+              )}              
               <motion.button
                 type="button"
                 className={`ob-primary-btn ${canContinue ? '' : 'disabled'}`}

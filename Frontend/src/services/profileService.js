@@ -205,57 +205,118 @@ export const profileService = {
    */
 
 
-  async createProfile(data, file) {
-    const url = `${API_BASE_URL}/api/profile`;
-    const token = getToken();
+  // async createProfile(data, file) {
+  //   const url = `${API_BASE_URL}/api/profile`;
+  //   const token = getToken();
 
+  //   if (!token) {
+  //     const error = new Error(
+  //       "No authentication token found. Please log in again."
+  //     );
+  //     error.status = 401;
+  //     throw error;
+  //   }
+
+  //   const formData = new FormData();
+
+  //   Object.entries(data).forEach(([key, value]) => {
+  //     if (value === undefined || value === null) return;
+  //     if (Array.isArray(value)) {
+  //       value.forEach((v) => formData.append(`${key}[]`, String(v)));
+  //     } else {
+  //       formData.append(key, String(value));
+  //     }
+  //   });
+
+  //   if (file instanceof File) formData.append(AVATAR_FIELD, file);
+
+  //   const response = await fetch(url, {
+  //     method: "POST",
+  //     headers: token ? { Authorization: `Bearer ${token}` } : {},
+  //     body: formData,
+  //   });
+
+  //   if (response.status === 401 && token) {
+  //     forceLogout();
+  //   }
+
+  //   const payload = await response.json().catch(() => ({}));
+
+  //   console.debug("[profileService] createProfile", response.status, payload);
+
+  //   if (!response.ok) {
+  //     const msg = Array.isArray(payload.message)
+  //       ? payload.message.join(" ")
+  //       : payload.message || "Profile creation failed.";
+  //     const err = new Error(msg);
+  //     err.status = response.status;
+  //     err.payload = payload;
+  //     throw err;
+  //   }
+  //   return payload;
+  // },
+  async createProfile(data, file) {
+    const token = getToken();
     if (!token) {
-      const error = new Error(
-        "No authentication token found. Please log in again."
-      );
+      const error = new Error("No authentication token found. Please log in again.");
       error.status = 401;
       throw error;
     }
-
-    const formData = new FormData();
-
-    Object.entries(data).forEach(([key, value]) => {
-      if (value === undefined || value === null) return;
-      if (Array.isArray(value)) {
-        value.forEach((v) => formData.append(`${key}[]`, String(v)));
-      } else {
-        formData.append(key, String(value));
-      }
-    });
-
-    if (file instanceof File) formData.append(AVATAR_FIELD, file);
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: formData,
-    });
-
-    if (response.status === 401 && token) {
-      forceLogout();
+    if (!(file instanceof File)) {
+      throw new Error("Avatar image is required. Please select a profile photo.");
     }
 
-    const payload = await response.json().catch(() => ({}));
+    const { identityTypeIds, ...rest } = data;
+    const ids = (identityTypeIds ?? []).map(Number).filter(Number.isFinite);
 
-    console.debug("[profileService] createProfile", response.status, payload);
+    // The server wants multipart, but we don't know how it reads arrays,
+    // so try each common format until one is accepted.
+    const variants = [
+      { name: "brackets", add: (fd) => ids.forEach((id) => fd.append("identityTypeIds[]", String(id))) },
+      { name: "indexed", add: (fd) => ids.forEach((id, i) => fd.append(`identityTypeIds[${i}]`, String(id))) },
+      { name: "json", add: (fd) => fd.append("identityTypeIds", JSON.stringify(ids)) },
+      { name: "csv", add: (fd) => fd.append("identityTypeIds", ids.join(",")) },
+    ];
 
-    if (!response.ok) {
+    let lastErr = null;
+
+    for (const variant of variants) {
+      const formData = new FormData();
+      Object.entries(rest).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) formData.append(key, String(value));
+      });
+      variant.add(formData);
+      formData.append(AVATAR_FIELD, file); // field name must be "file"
+
+      const response = await fetch(`${API_BASE_URL}/api/profile`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (response.status === 401) forceLogout();
+
+      const payload = await response.json().catch(() => ({}));
+      console.debug(`[profileService] createProfile (${variant.name})`, response.status, payload);
+
+      if (response.ok) {
+        console.info(`[profileService] ✓ profile created using "${variant.name}" format`);
+        return payload;
+      }
+
       const msg = Array.isArray(payload.message)
         ? payload.message.join(" ")
         : payload.message || "Profile creation failed.";
       const err = new Error(msg);
       err.status = response.status;
       err.payload = payload;
-      throw err;
-    }
-    return payload;
-  },
+      lastErr = err;
 
+      // Only keep trying when the problem is the identityTypeIds format.
+      if (!/identityTypeIds/i.test(msg)) throw err;
+    }
+
+    throw lastErr;
+  },
   /**
    * PATCH /api/profile – updates an existing profile record.
    * body: { username, ageRange, identityTypeIds, primaryIdentityTypeId }
@@ -271,36 +332,32 @@ export const profileService = {
    * @returns {Promise<any>}
    */
   async ensureProfile(data, file) {
-  invalidateProfile();                  
-  let existing = await fetchProfileOnce();
+    invalidateProfile();
+    const fetched = await fetchProfileOnce();
+    const existing = fetched?.data ?? fetched;
+    const hasProfile = !!(existing && (existing.username || existing.id));
 
-  if (existing) {
-    const body = { ...data };
-    if (existing.username && existing.username === body.username) {
-      delete body.username;
+    if (hasProfile) {
+      const body = { ...data };
+      if (existing.username && existing.username === body.username) {
+        delete body.username;
+      }
+      if (Object.keys(body).length === 0) {
+        return { created: false, data: existing };
+      }
+      try {
+        const updated = await profileService.updateProfile(body);
+        invalidateProfile();
+        return { created: false, data: updated };
+      } catch (err) {
+        if (err.status !== 404) throw err; // 404 = not really there, create below
+      }
     }
-    if (Object.keys(body).length === 0) {
-      return { created: false, data: existing };
-    }
-    
-    try {
-      const updated = await profileService.updateProfile(body);
-      invalidateProfile();
-      return { created: false, data: updated };
-    } catch (err) {
-      // 404 = the profile doesn't really exist, so create it below
-      if (err.status !== 404) throw err;
-      existing = null;
-    }
-  }
 
-  if (!(file instanceof File)) {
-    throw new Error("Avatar image is required. Please select a profile photo.");
-  }
-  const created = await profileService.createProfile(data, file);
-  invalidateProfile();
-  return { created: true, data: created };
-},
+    const created = await profileService.createProfile(data, file);
+    invalidateProfile();
+    return { created: true, data: created };
+  },
   async deleteAccount() {
     const res = await request("/api/auth/delete-account", { method: "DELETE" });
     if (res?.success === false) {
@@ -860,7 +917,7 @@ export const profileService = {
     return _skillIdToNameCache || { ..._knownIdToName };
   },
 
-    /** DEV ONLY: list skills from onboardingData.js that the server doesn't have. */
+  /** DEV ONLY: list skills from onboardingData.js that the server doesn't have. */
   async debugMissingSkills() {
     profileService.invalidateSkillMap();
     const map = await profileService.fetchSkillNameToIdMap();
@@ -898,14 +955,21 @@ export const profileService = {
   mapRoleToIdentityTypeId(roleName, identityTypes) {
     const list = Array.isArray(identityTypes)
       ? identityTypes
-      : (identityTypes?.data ?? []);
+      : (identityTypes?.data ?? identityTypes?.items ?? []);
+
+    const clean = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const target = clean(roleName);
 
     const match = list.find(
-      (t) =>
-        (t.name ?? t.label ?? t.type ?? "")
-          .toLowerCase()
-          .trim() === roleName.toLowerCase().trim()
+      (t) => clean(t.name ?? t.label ?? t.type ?? t.title) === target
     );
+
+    if (!match) {
+      console.warn(
+        "[profileService] Role not found:", roleName,
+        "available:", list.map((t) => t.name ?? t.label ?? t.type ?? t.title)
+      );
+    }
     return match?.id ?? null;
   },
 
@@ -938,7 +1002,7 @@ export const profileService = {
       console.error("[profileService] Failed to build skill map:", err);
       errors.push({ section: "skill-map", status: err.status ?? null, message: err.message });
     }
-        // Report any chosen skill that has no id on the server
+    // Report any chosen skill that has no id on the server
     {
       const chosen = [
         ...(draft.curiosities ?? []),
@@ -1012,8 +1076,8 @@ export const profileService = {
         ...(draft.ageRange ? { ageRange: draft.ageRange } : {}),
         ...(identityTypeId != null
           ? {
-            identityTypeIds: [identityTypeId],
-            primaryIdentityTypeId: identityTypeId,
+            identityTypeIds: [Number(identityTypeId)],
+            primaryIdentityTypeId: Number(identityTypeId),
           }
           : {}),
       };
@@ -1065,16 +1129,31 @@ export const profileService = {
         "Avatar will not be uploaded. The user can re-select the photo after reload."
       );
     }
-    // ── 3.8. Make sure the role was actually stored ─────────────────────
+    // ── 3.8. Save the role via the identity endpoint ─────────────────────
     if (profileSaved && identityTypeId != null) {
+      const wantedId = Number(identityTypeId);
       try {
-        const res = await profileService.getUserIdentities();
-        const list = Array.isArray(res) ? res : res?.data ?? [];
-        if (list.length === 0) {
-          await profileService.selectUserIdentities([identityTypeId], identityTypeId);
+        // Skip if this exact role is already saved (safe on retry / edit)
+        let alreadySaved = false;
+        try {
+          const res = await profileService.getUserIdentities();
+          const list = Array.isArray(res) ? res : res?.data ?? res?.items ?? [];
+          alreadySaved = list.some(
+            (i) => Number(i.identityTypeId) === wantedId && (i.isPrimary ?? true)
+          );
+        } catch { /* ignore, just try to save */ }
+
+        if (!alreadySaved) {
+          await profileService.selectUserIdentities([wantedId], wantedId);
         }
+        console.debug("[profileService] ✓ Role saved");
       } catch (err) {
-        errors.push({ section: "identity", status: err.status ?? null, message: err.message });
+        console.error("[profileService] Role save failed:", err.status, err.message, err.payload);
+        errors.push({
+          section: "identity",
+          status: err.status ?? null,
+          message: `Role save failed: ${err.message}`,
+        });
       }
     }
     // ── 4. Bio ────────────────────────────────────────────────────────────
@@ -1179,5 +1258,5 @@ export const profileService = {
 
     return { errors };
   },
-  
+
 };
