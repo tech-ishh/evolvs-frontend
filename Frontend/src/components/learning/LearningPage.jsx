@@ -405,7 +405,7 @@ export default function LearningPage() {
       <main className="lp-main">
         <div className="lp-topbar">
           <button type="button" className="lp-search" onClick={() => go('/search')}>
-            <Search size={17} aria-hidden="true" /> Search skills, topics, people...
+            <Search size={17} aria-hidden="true" /> Search people...
           </button>
           <button type="button" className="lp-icon-btn" aria-label="Notifications" onClick={() => go('/notifications')}>
             <Bell size={19} />

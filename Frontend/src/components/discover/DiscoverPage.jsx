@@ -6,6 +6,7 @@ import {
   BookOpen, Bell, User, CheckCheck
 } from 'lucide-react';
 import '../discover/DiscoverPage.css';
+import InfoTip from '../info/InfoTip.jsx';
 import { profileService } from '../../services/profileService';
 import { discoverService } from '../../services/discoverService.js';
 import { navigate } from '../../utils/navigate.js';
@@ -1002,7 +1003,15 @@ export default function DiscoverPage() {
         {/* ───── Skills / curiosity chips (with Connections box first) ───── */}
         <section className="dx-section">
           <div className="dx-section-head">
-            <h2>{chipTitle}</h2>
+            <h2 className="infotip-title">
+              {chipTitle}
+              {tab === 'foryou' && (
+                <InfoTip
+                  label="About Skills worth exploring"
+                  text="Discover your connections and skills that can help you grow."
+                />
+              )}
+            </h2>
           </div>
 
           {loading ? (

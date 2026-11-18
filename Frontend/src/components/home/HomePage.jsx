@@ -37,7 +37,7 @@ import {
   FileText
 } from 'lucide-react';
 import { CURIOSITY_DOMAINS } from '../onboarding/onboardingData.js';
-
+import InfoTip from '../info/InfoTip.jsx';
 import { authService } from '../../services/authService.js';
 import { homePostService, postSkillCache } from '../../services/homePostService.js';
 import { connectionService } from '../../services/connectionService.js';
@@ -97,7 +97,7 @@ const MAIN_NAV = [
   { id: 'home', label: 'Home', icon: Home, href: '/home' },
   { id: 'discover', label: 'Discover', icon: Compass, href: '/discover' },
   { id: 'mylearning', label: 'My Learning', icon: BookOpen, href: '/learning' },
-  { id: 'bookmark', label: 'Bookmark', icon: Bookmark, href: '/saved' },
+  // { id: 'bookmark', label: 'Bookmark', icon: Bookmark, href: '/saved' },
 ];
 
 const COMMUNITY_NAV = [
@@ -622,7 +622,6 @@ function HomeSidebar({ user, activeNav = 'home', isSidebarOpen, setIsSidebarOpen
 
         {/* Main Nav */}
         <nav aria-label="Main navigation">
-          <p className="hp-nav-section-label">MAIN NAV</p>
           <ul className="hp-nav-list">
             {MAIN_NAV.map((item) => {
               const Icon = item.icon;
@@ -2195,7 +2194,13 @@ body {
         {/* Your Growth */}
         <section className="hp-right-card" aria-labelledby="growth-heading">
           <div className="hp-right-card-header">
-            <h2 id="growth-heading" className="hp-right-card-title">Your Growth</h2>
+            <h2 id="growth-heading" className="hp-right-card-title infotip-title">
+              Your Growth
+              <InfoTip
+                label="About Your Growth"
+                text="Track your learning activity and progress across your skills."
+              />
+            </h2>
             <button className="hp-view-all-btn" onClick={() => navigate('/profile')}>
               View Profile →
             </button>

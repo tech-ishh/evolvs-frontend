@@ -70,6 +70,7 @@ import './ProfilePage.css';
 import { navigate } from '../../utils/navigate.js';
 import { learnedService } from '../../services/learnedService.js';
 import { buildProfileShareUrl } from '../../utils/shareLink.js';
+import InfoTip from '../info/InfoTip.jsx';
 
 function openMyPost(postId, tab) {
   const filterMap = { images: 'image', reels: 'video', all: 'all', };
@@ -177,7 +178,6 @@ function ProfileSidebar({ user, profile, isSidebarOpen, setIsSidebarOpen }) {
         </div>
 
         <nav aria-label="Main navigation">
-          <p className="pp-nav-section-label">MAIN NAV</p>
           <ul className="pp-nav-list">
             {MAIN_NAV.map((item) => {
               const Icon = item.icon;
@@ -318,7 +318,13 @@ function ProfileRightPanel({
         </button>
         {/* Quick stats — real data from post reactions & post counts */}
         <div className="pp-right-card">
-          <p className="pp-right-card-title">Daily Reaction Count</p>
+          <p className="pp-right-card-title infotip-title">
+            Daily Reaction Count
+            <InfoTip
+              label="About Daily Reaction Count"
+              text="Reactions your posts received today."
+            />
+          </p>
           <div className="pp-quick-stats">
             <div className="pp-quick-stat">
               <span className="pp-quick-stat-value">{daily('todayPostCount')}</span>
@@ -341,7 +347,13 @@ function ProfileRightPanel({
 
         {/* Your Growth — topics from real skills; helpful % from real reactions */}
         <div className="pp-right-card">
-          <p className="pp-right-card-title">Your Daily Growth</p>
+          <p className="pp-right-card-title infotip-title">
+            Your Daily Growth
+            <InfoTip
+              label="About Your Growth"
+              text="See your overall progress on EVOLVS."
+            />
+          </p>
           <div className="pp-growth-section">
             {GROWTH_ITEMS.length > 0 ? (
               GROWTH_ITEMS.map(({ label, value, pct, colorClass }) => (
