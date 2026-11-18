@@ -6,7 +6,6 @@
  * subscribe without opening multiple sockets.
  *
  * Backend origin  : VITE_API_BASE_URL
- *                   (e.g. https://evolve-backend-4lux.onrender.com)
  * Namespace       : default ("/")  — the gateway uses the default namespace.
  * Real-time event : "posts-batch"  — emitted as
  *                   Array<{ post: { id, caption, publishedAt, ... } }>
@@ -27,9 +26,7 @@ const TOKEN_KEY = 'evolv_auth_token';
  * The variable contains the full backend origin (no trailing slash, no /api).
  * Socket.IO connects to the origin directly on the default namespace.
  */
-const SOCKET_ORIGIN =
-  import.meta.env?.VITE_API_BASE_URL ??
-  'https://evolve-backend-4lux.onrender.com';
+const SOCKET_ORIGIN = import.meta.env.VITE_API_BASE_URL;
 
 // ─── Singleton state ──────────────────────────────────────────────────────────
 

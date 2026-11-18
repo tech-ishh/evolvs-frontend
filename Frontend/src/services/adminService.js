@@ -1,7 +1,7 @@
 // src/services/adminService.js
 // Admin-specific API service for the EVOLVS platform admin panel
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://evolve-backend-4lux.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ADMIN_TOKEN_KEY = 'evolv_admin_token';
 const ADMIN_USER_KEY = 'evolv_admin_user';

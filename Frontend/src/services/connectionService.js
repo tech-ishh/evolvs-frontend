@@ -17,17 +17,12 @@
  *   GET    /api/connections                    — list accepted connections
  *   DELETE /api/connections/:id                — cancel request or remove connection
  *
- * Backend base URL: VITE_API_BASE_URL
- * (e.g. https://evolve-backend-4lux.onrender.com)
- *
  * NOTE: The backend does NOT currently emit Socket.IO events for connection
  * actions (the existing PostsGateway handles posts and comments only).
  * All connection state updates therefore happen via REST responses.
  */
 
-const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ??
-  'https://evolve-backend-4lux.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const TOKEN_KEY = 'evolv_auth_token';
 import { forceLogout } from './sessionService.js';

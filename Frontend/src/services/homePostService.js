@@ -20,11 +20,7 @@
  *     ],
  *     pagination: { limit, hasMore, nextCursor }
  *   }
- *
- * API base URL is the backend origin (no trailing /api):
- *   VITE_API_BASE_URL=http://localhost:3000   (local dev, via .env.local)
- *   VITE_API_BASE_URL=https://evolve-backend-4lux.onrender.com  (production)
- *
+ 
  * Endpoints are constructed as ${API_BASE_URL}/api/posts etc.
  * Never append /api twice.
  */

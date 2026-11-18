@@ -7,9 +7,7 @@
  */
 import { forceLogout } from './sessionService.js';
 
-const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ??
-  'https://evolve-backend-4lux.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const TOKEN_KEY = 'evolv_auth_token';
 const getToken = () =>

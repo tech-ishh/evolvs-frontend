@@ -2,9 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { navigate } from '../../utils/navigate.js';
 import './ProfilePage.css';
 
-const API_BASE_URL =
-  import.meta.env?.VITE_API_BASE_URL ??
-  'https://evolve-backend-4lux.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+ 
 
 export default function PublicProfilePage({ username }) {
   const [profile, setProfile] = useState(null);

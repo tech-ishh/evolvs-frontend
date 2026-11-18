@@ -1,8 +1,7 @@
 import { authService } from './authService.js';
 
 // CHANGED: same base URL as homePostService.js
-const ORIGIN =
-  import.meta.env?.VITE_API_BASE_URL ?? 'https://evolve-backend-4lux.onrender.com';
+const ORIGIN = import.meta.env.VITE_API_BASE_URL;
 const API_BASE = `${ORIGIN}/api`;
 
 const getToken = () =>

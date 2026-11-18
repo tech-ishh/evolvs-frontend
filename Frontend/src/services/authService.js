@@ -202,9 +202,7 @@ export const authService = {
    */
 
   loginWithGoogle(mode = "login") {
-    const backendUrl =
-      import.meta.env.VITE_API_BASE_URL ||
-      "https://evolve-backend-4lux.onrender.com";
+    const backendUrl = import.meta.env.VITE_API_BASE_URL;
 
     const googleUrl = new URL(`${backendUrl}/api/auth/google`);
     googleUrl.searchParams.set("returnUrl", window.location.origin);
