@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { enableDevtoolsGuard } from './utils/devtoolsGuard';
 import Hero from './components/Hero';
 import Onboarding from './components/onboarding/Onboarding';
 import LoginPage from './components/auth/LoginPage';
@@ -72,6 +73,7 @@ function isPublicRoute(route) {
 export default function App() {
   const [route, setRoute] = useState(getRoute);
   const [allowed, setAllowed] = useState(false);
+  useEffect(() => enableDevtoolsGuard(), []);
   
   useEffect(() => {
     const sync = () => setRoute(getRoute());

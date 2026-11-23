@@ -122,12 +122,12 @@ function describeSubmitError(errors = []) {
     };
   }
 
-  if (
-    text.includes("username") &&
-    /(taken|exist|already|duplicate)/.test(text)
-  ) {
+  if (text.includes("username")) {
+    const taken = /(taken|exist|already|duplicate)/.test(text);
     return {
-      message: "That username may already be taken. Please choose another.",
+      message: taken
+        ? "That username may already be taken. Please choose another."
+        : "Username can contain only lowercase letters, numbers, and underscores.",
       goToStep: 1,
     };
   }
@@ -244,15 +244,11 @@ export default function Onboarding() {
       return;
     }
     setShowErrors(false);
-    pendingStepRef.current = Math.min(step + 1, TOTAL_STEPS + 1); // 5 = completion
+    setSubmitError('');
+    setSubmitDetail('');
+    pendingStepRef.current = Math.min(step + 1, TOTAL_STEPS + 1);
     setPhase('leaving');
   }, [step, draft]);
-
-  const goBack = useCallback(() => {
-    setShowErrors(false);
-    pendingStepRef.current = Math.max(step - 1, 1);
-    setPhase('leaving');
-  }, [step]);
 
   // Phase 1 — hold the leave pose, then swap in the next step content.
   useEffect(() => {
@@ -459,7 +455,7 @@ export default function Onboarding() {
                   {submitError}
                   {submitDetail && <small style={{ display: 'block', opacity: 0.7 }}>{submitDetail}</small>}
                 </span>
-              )}              
+              )}
               <motion.button
                 type="button"
                 className={`ob-primary-btn ${canContinue ? '' : 'disabled'}`}
