@@ -3,7 +3,7 @@ import {
   Search, ChevronLeft, ChevronRight, ArrowRight, Sparkles, Code2, Mic,
   Brain, Palette, PenLine, TrendingUp, Target, Compass, Users, Route,
   Rocket, Globe, Lightbulb, Play, FileText, Heart, CheckCircle2, Home,
-  BookOpen, Bell, User, CheckCheck
+  BookOpen, Bell, User, CheckCheck, Menu
 } from 'lucide-react';
 import '../discover/DiscoverPage.css';
 import InfoTip from '../info/InfoTip.jsx';
@@ -327,6 +327,19 @@ export default function DiscoverPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const searchBoxRef = useRef(null);
+
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // lock page scroll while the menu is open + close with Escape
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : '';
+    const onKey = (e) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     const q = search.trim();
@@ -760,8 +773,29 @@ export default function DiscoverPage() {
   return (
     <div className="dx-layout">
       {/* ───── Sidebar (desktop / tablet) ───── */}
-      <aside className="dx-sidebar" aria-label="Main navigation">
-        <img src="/logo-remove.png" alt="EVOLV" className="dx-logo" />
+      {/* Overlay behind the mobile menu */}
+      <div
+        className={`dx-sidebar-overlay ${menuOpen ? 'visible' : ''}`}
+        onClick={() => setMenuOpen(false)}
+        aria-hidden="true"
+      />
+
+      <aside
+        className={`dx-sidebar ${menuOpen ? 'open' : ''}`}
+        aria-label="Main navigation"
+      >
+        <div className="dx-sidebar-top">
+          <img src="/logo-remove.png" alt="EVOLV" className="dx-logo" />
+          <button
+            type="button"
+            className="dx-sidebar-close"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
         <nav>
           {NAV.map(({ id, label, icon: Icon, to }) => (
             <button
@@ -769,7 +803,7 @@ export default function DiscoverPage() {
               type="button"
               className={`dx-nav-item ${id === 'discover' ? 'active' : ''}`}
               aria-current={id === 'discover' ? 'page' : undefined}
-              onClick={() => navigate(to)}
+              onClick={() => { setMenuOpen(false); navigate(to); }}
             >
               <Icon size={19} aria-hidden="true" />
               <span>{label}</span>
@@ -781,7 +815,18 @@ export default function DiscoverPage() {
       <div className="discover-page">
         {/* ───── Header ───── */}
         <header className="dx-header">
-          <h1>Discover</h1>
+          <div className="dx-header-row">
+            <button
+              type="button"
+              className="dx-menu-btn"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={menuOpen}
+            >
+              <Menu size={20} aria-hidden="true" />
+            </button>
+            <h1>Discover</h1>
+          </div>
           <p>Explore what makes you curious. Learn new skills. Become a better you.</p>
         </header>
 

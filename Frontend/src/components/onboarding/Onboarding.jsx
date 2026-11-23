@@ -1619,7 +1619,6 @@ export default function Onboarding() {
         }
 
         @media (max-width: 768px) {
-        .skill-tabs { grid-template-columns: 1fr; }
           .ob-page { padding: 12px; }
           .ob-frame {
             min-height: calc(100vh - 24px);
@@ -1681,6 +1680,51 @@ export default function Onboarding() {
             padding: 20px 18px;
             box-shadow: 3px 4px 0 var(--border, #09030F);
           }
+          .ob-session-bar {
+  position: relative;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  margin: 8px auto 0;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.ob-session-bar span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ob-session-bar strong {
+  display: block;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.ob-session-bar button {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 2px solid #09030F;
+  background: #fff;
+  color: #09030F;
+  font-weight: 700;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
 
           .identity-row { flex-direction: column; gap: 16px; }
           .identity-row-secondary { grid-template-columns: 1fr; }
@@ -1719,6 +1763,19 @@ export default function Onboarding() {
           .photo-circle { width: 80px; height: 80px; }
           .ob-steps { gap: 8px; }
         }
+          @media (max-width: 430px) {
+  .ob-session-bar {
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 8px;
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .ob-session-bar button {
+    justify-self: start;
+  }
+}
 
         @media (max-width: 390px) {
           .count-wide { display: none; }
@@ -1834,6 +1891,58 @@ export default function Onboarding() {
   letter-spacing: 0.13em;
   color: var(--purple, #A943F5);
 }
+  /* ─── Skill tabs: compact on mobile ─── */
+.tab-short { display: none; }
+.skill-tab { min-width: 0; }
+
+@media (max-width: 768px) {
+  .skill-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .skill-tab {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    min-height: 54px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .tab-full { display: none; }
+  .tab-short { display: inline; }
+
+  .skill-tab-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  .skill-tab-count {
+    min-width: 18px;
+    padding: 1px 6px;
+    font-size: 0.62rem;
+    line-height: 1.5;
+  }
+
+  .skill-tab:hover { transform: none; }
+
+  .skill-tab-sub {
+    margin: 8px 2px 0;
+    font-size: 0.74rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .skill-tab-title { font-size: 0.56rem; letter-spacing: 0.03em; }
+  .skill-tab { padding: 7px 3px; }
+}
+
       `}</style>
     </main>
   );

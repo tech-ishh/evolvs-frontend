@@ -1452,7 +1452,7 @@ function FeedPost({ post, onLike, onSave, onFollow, onAppreciate, onHelpful, onL
         </div>
 
         {/* Bookmark */}
-        <button
+        {/* <button
           className={`hp-save-btn ${post.saved ? 'saved' : ''}`}
           onClick={() => onSave(post.id)}
           onTouchStart={() => startLongPress('Bookmark')}
@@ -1473,7 +1473,7 @@ function FeedPost({ post, onLike, onSave, onFollow, onAppreciate, onHelpful, onL
             fill={post.saved ? 'currentColor' : 'none'}
             aria-hidden="true"
           />
-        </button>
+        </button> */}
 
         {/* More */}
         <button

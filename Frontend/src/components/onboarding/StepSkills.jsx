@@ -246,7 +246,10 @@ export default function StepSkills({ draft, setDraft, showErrors }) {
             className={`skill-tab ${active === s.id ? 'active' : ''}`}
             onClick={() => setActive(s.id)}
           >
-            <span className="skill-tab-title">{s.title}</span>
+            <span className="skill-tab-title">
+              <span className="tab-full">{s.title}</span>
+              <span className="tab-short">{SHORT[s.id]}</span>
+            </span>
             <span className="skill-tab-count">{draft.skills[s.id].length}</span>
           </button>
         ))}
