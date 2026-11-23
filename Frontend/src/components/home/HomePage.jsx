@@ -3440,8 +3440,6 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
         if (cancelled) return;
         const payload = raw?.data ?? raw;
 
-        console.log("[Home Tabs API response]:", payload);
-
         const categoryTabs = Array.isArray(payload?.tabs)
           ? payload.tabs
             .map((tab) =>
@@ -3491,9 +3489,6 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
               ])
           ).values(),
         ];
-
-        console.log("[Home Tabs]:", uniqueTabs);
-        console.log("[Selected Skills]:", selectedSkillTabs);
 
         setApiTabs(uniqueTabs);
         setTabsError(null);

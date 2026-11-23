@@ -75,21 +75,21 @@ function createSocket() {
   });
 
   // ── Diagnostic listeners (always attached, never removed) ─────────────────
-  _socket.on('connect', () => {
-    console.log('[socketService] ✅ Connected  id:', _socket.id, ' origin:', SOCKET_ORIGIN);
-  });
+  // _socket.on('connect', () => {
+  //   console.log('[socketService] ✅ Connected  id:', _socket.id, ' origin:', SOCKET_ORIGIN);
+  // });
 
-  _socket.on('connect_error', (err) => {
-    console.warn('[socketService] ❌ Connection error:', err.message);
-  });
+  // _socket.on('connect_error', (err) => {
+  //   console.warn('[socketService] ❌ Connection error:', err.message);
+  // });
 
-  _socket.on('disconnect', (reason) => {
-    console.log('[socketService] 🔌 Disconnected:', reason);
-  });
+  // _socket.on('disconnect', (reason) => {
+  //   console.log('[socketService] 🔌 Disconnected:', reason);
+  // });
 
-  _socket.on('reconnect', (attempt) => {
-    console.log('[socketService] 🔁 Reconnected after', attempt, 'attempt(s)');
-  });
+  // _socket.on('reconnect', (attempt) => {
+  //   console.log('[socketService] 🔁 Reconnected after', attempt, 'attempt(s)');
+  // });
 
   return _socket;
 }
@@ -125,7 +125,6 @@ const socketService = {
     if (_refCount === 0 && _socket) {
       _socket.disconnect();
       _socket = null;
-      console.log('[socketService] 🗑️  Socket destroyed (ref-count reached 0).');
     }
   },
 

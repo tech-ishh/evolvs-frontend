@@ -207,7 +207,6 @@ export const connectionService = {
   async getReceivedRequests() {
     try {
       const result = await request('/api/connections/requests/received', { method: 'GET' });
-      console.log('[received raw]', result);
       // Normalise common envelope shapes
       return Array.isArray(result)
         ? result

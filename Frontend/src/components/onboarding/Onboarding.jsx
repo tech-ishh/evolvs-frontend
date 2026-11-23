@@ -42,7 +42,7 @@ function loadDraft() {
         const text = (v) => (typeof v === 'string' ? v : '');
         return {
           name: text(saved.name),
-          username: text(saved.username),
+          username: text(saved.username).toLowerCase(),
           profilePhoto: typeof saved.profilePhoto === 'string' ? saved.profilePhoto : null,
           // File objects cannot be serialised — always start with null on reload.
           // The user must re-select a photo if they reload mid-onboarding.

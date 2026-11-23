@@ -172,13 +172,13 @@ export default function StepIdentity({ draft, setDraft, showErrors }) {
     },
     {
       id: 'chars',
-      label: 'Only letters, numbers and underscores',
-      ok: usernameValue.length > 0 && /^[A-Za-z0-9_]+$/.test(usernameValue),
+      label: 'Only lowercase letters, numbers and underscores',
+      ok: usernameValue.length > 0 && /^[a-z0-9_]+$/.test(usernameValue),
     },
     {
       id: 'start',
-      label: 'Starts with a letter',
-      ok: /^[A-Za-z]/.test(usernameValue),
+      label: 'Starts with a lowercase letter',
+      ok: /^[a-z]/.test(usernameValue),
     },
   ];
 
@@ -232,10 +232,16 @@ export default function StepIdentity({ draft, setDraft, showErrors }) {
                 className="ob-input"
                 placeholder="e.g. priya_sharma21"
                 value={draft.username}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 onChange={(e) =>
                   setDraft((d) => ({
                     ...d,
-                    username: e.target.value.replace(/[^A-Za-z0-9_]/g, '').slice(0, USERNAME_MAX),
+                    username: e.target.value
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, '')
+                      .slice(0, USERNAME_MAX),
                   }))
                 }
               />

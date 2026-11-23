@@ -706,7 +706,7 @@ export const getCountryCode = (name) => {
 // ─── Username rules ───────────────────────────────────────────────────────────
 export const USERNAME_MIN = 3;
 export const USERNAME_MAX = 20;
-export const USERNAME_RE = /^[a-zA-Z0-9_]+$/;
+const USERNAME_RE = /^[a-z0-9_]+$/;
 
 export function validateUsername(raw) {
   const v = raw.trim();

@@ -1071,7 +1071,7 @@ export const profileService = {
     if (draft.username?.trim()) {
       const countryCode = getCountryCode(draft.country);
       const profileBody = {
-        username: draft.username.trim(),
+        username: draft.username.trim().toLowerCase(),
         ...(countryCode ? { countryCode } : {}),
         ...(draft.ageRange ? { ageRange: draft.ageRange } : {}),
         ...(identityTypeId != null

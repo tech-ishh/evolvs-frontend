@@ -859,7 +859,6 @@ export const homePostService = {
     const qs = params.toString() ? `?${params.toString()}` : "";
 
     const result = await request(`${FEED_ENDPOINT}${qs}`, { method: "GET" });
-    console.log('[Feed raw response]', result);
 
     const posts = Array.isArray(result?.data)
       ? result.data
