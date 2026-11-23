@@ -10,6 +10,7 @@ import { useInView, useLearningTracker } from '../hooks/useLearningTracker.js';
 import { navigate } from '../../utils/navigate.js';
 import { takeListPosts, clearListPosts } from '../../utils/listPosts.js';
 import { enrichCreators } from '../../services/discoverService.js';
+import { attachReactionData, getPostLearned } from '../../services/reactionTotals.js';
 import "../reels/ReelPage.css";
 
 // ── Type helpers ────────────────────────────────────────────────────────────
@@ -30,25 +31,7 @@ function goBack() {
   clearListPosts();
   navigate(back);
 }
-// Fill real reaction counts + my reaction state for each post
-const attachReactions = (list) =>
-  Promise.all(
-    list.map(async (p) => {
-      if (!/^\d+$/.test(String(p.id))) return p;
 
-      const { counts = {}, myReaction } = await homePostService.getReactions(p.id);
-      const mine = [].concat(myReaction ?? []);
-
-      return {
-        ...p,
-        appreciations: counts.APPRECIATE ?? p.appreciations ?? 0,
-        helpfulCount: counts.HELPFUL ?? p.helpfulCount ?? 0,
-        learnedCount: counts.LEARNED ?? p.learnedCount ?? 0,
-        appreciated: mine.includes('APPRECIATE') || p.appreciated,
-        helpful: mine.includes('HELPFUL') || p.helpful,
-      };
-    })
-  );
 
 // ─── One feed item (video OR image) ─────────────────────────────────────────
 function FeedItem({ post, muted, setMuted, onAppreciate, onHelpful, onLearned, onDiscuss, onOpenProfile }) {
@@ -319,7 +302,7 @@ export default function ReelsPage() {
         }
 
         const withCreators = await enrichCreators(list);
-        const withReactions = await attachReactions(withCreators);
+        const withReactions = await attachReactionData(withCreators);
         const withCounts = await homePostService.attachCommentCounts(withReactions);
 
         if (!cancelled) setPosts(withCounts);
@@ -391,9 +374,18 @@ export default function ReelsPage() {
   const onHelpful = (id) => toggle(id, 'helpful', 'helpfulCount',
     () => homePostService.addReaction(id, 'HELPFUL'),
     () => homePostService.removeReaction(id, 'HELPFUL'));
+  const syncLearned = useCallback(async (id) => {
+    try {
+      const l = await getPostLearned(id);
+      setPosts((ps) => ps.map((p) => (String(p.id) !== String(id) ? p : { ...p, ...l })));
+    } catch (e) {
+      console.warn('[syncLearned] failed:', e.message);
+    }
+  }, []);
+
   const onLearned = (id) => toggle(id, 'learned', 'learnedCount',
-    () => homePostService.markLearned(id),
-    () => homePostService.unmarkLearned(id));
+    async () => { await homePostService.markLearned(id); await syncLearned(id); },
+    async () => { await homePostService.unmarkLearned(id); await syncLearned(id); });
 
   const onCommentSync = useCallback((postId, total) => {
     setPosts((ps) => ps.map((p) =>

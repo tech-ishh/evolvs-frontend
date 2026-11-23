@@ -4,6 +4,7 @@ import {
   Heart, Sparkles, CheckCircle2, MessageCircle, Trash2,
 } from 'lucide-react';
 import { authService } from '../../services/authService.js';
+import { attachReactionData, getPostLearned } from '../../services/reactionTotals.js';
 import { homePostService } from '../../services/homePostService.js';
 import { navigate } from '../../utils/navigate.js';
 import CommentPanel from '../shared/CommentPanel.jsx';
@@ -12,6 +13,8 @@ import "../image/ImageViewerPage.css"
 
 const isImage = (p) => p.media?.type === 'image' && p.media?.src;
 const fmt = (n = 0) => (n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'K' : String(n));
+// Fill real reaction counts (incl. Learned) + my reaction state for each post
+
 
 function goBack() {
   const back = sessionStorage.getItem('evolv-image-back') || '/home';
@@ -39,33 +42,37 @@ export default function ImageViewerPage() {
     let cancelled = false;
     (async () => {
       try {
+        let list;
+
         const given = takeListPosts();
         if (given) {
-          const list = given.filter(isImage);
-          if (cancelled) return;
-          setPosts(list);
-          const startId = sessionStorage.getItem('evolv-image-start');
-          const i = list.findIndex((p) => String(p.id) === startId);
-          setIndex(i >= 0 ? i : 0);
-          return;
+          list = given.filter(isImage);
+        } else {
+          const userId = user?.id ?? user?.userId ?? user?._id ?? null;
+          const [feedRes, mine] = await Promise.all([
+            homePostService.getFeedPosts().catch(() => ({ posts: [] })),
+            homePostService.getMyPosts(userId).catch(() => []),
+          ]);
+          const feed = (feedRes?.posts ?? []).map((p) => homePostService._normalisePost(p));
+          const map = new Map();
+          [...(mine || []), ...feed].forEach((p) => {
+            if (p?.id && isImage(p)) map.set(String(p.id), p);
+          });
+          list = [...map.values()];
         }
-        const userId = user?.id ?? user?.userId ?? user?._id ?? null;
-        const [feedRes, mine] = await Promise.all([
-          homePostService.getFeedPosts().catch(() => ({ posts: [] })),
-          homePostService.getMyPosts(userId).catch(() => []),
-        ]);
-        const feed = (feedRes?.posts ?? []).map((p) => homePostService._normalisePost(p));
-        const map = new Map();
-        [...(mine || []), ...feed].forEach((p) => {
-          if (p?.id && isImage(p)) map.set(String(p.id), p);
-        });
-        const list = [...map.values()];
+
+        // real reaction counts + comment counts
+        const withReactions = await attachReactionData(list);
+        const withCounts = await homePostService
+          .attachCommentCounts(withReactions)
+          .catch(() => withReactions);
+
         if (cancelled) return;
-        setPosts(list);
+        setPosts(withCounts);
 
         const startId = sessionStorage.getItem('evolv-image-start');
         if (startId) {
-          const i = list.findIndex((p) => String(p.id) === startId);
+          const i = withCounts.findIndex((p) => String(p.id) === startId);
           if (i >= 0) setIndex(i);
           sessionStorage.removeItem('evolv-image-start');
         }
@@ -164,6 +171,15 @@ export default function ImageViewerPage() {
       setPosts(snapshot);
     } finally {
       pending.current.delete(key);
+    }
+  }, []);
+
+  const syncLearned = useCallback(async (id) => {
+    try {
+      const l = await getPostLearned(id);
+      setPosts((ps) => ps.map((p) => (String(p.id) !== String(id) ? p : { ...p, ...l })));
+    } catch (e) {
+      console.warn('[syncLearned] failed:', e.message);
     }
   }, []);
 
@@ -286,8 +302,8 @@ export default function ImageViewerPage() {
 
               <button className={`iv-act ${post.learned ? 'on green' : ''}`}
                 onClick={() => toggle(post.id, 'learned', 'learnedCount',
-                  () => homePostService.markLearned(post.id),
-                  () => homePostService.unmarkLearned(post.id))}>
+                  async () => { await homePostService.markLearned(post.id); await syncLearned(post.id); },
+                  async () => { await homePostService.unmarkLearned(post.id); await syncLearned(post.id); })}>
                 <CheckCircle2 size={20} />
                 <strong>{fmt(post.learnedCount)}</strong><span>Learned</span>
               </button>

@@ -123,4 +123,32 @@ export function normaliseReactions(json = {}, postId) {
     appreciated,
     helpful,
   };
+  
+}
+/** Fills reactions + learned (count and my state) for every post, same as Home */
+export function attachReactionData(list = []) {
+  return Promise.all(
+    list.map(async (p) => {
+      if (!/^\d+$/.test(String(p.id))) return p;
+
+      const cached = getCachedFlags(p.id);
+
+      const [reactionRes, learnedRes] = await Promise.allSettled([
+        getPostReactions(p.id),
+        getPostLearned(p.id),
+      ]);
+
+      const reactions =
+        reactionRes.status === 'fulfilled'
+          ? normaliseReactions(reactionRes.value, p.id)
+          : { appreciated: cached.appreciated, helpful: cached.helpful };
+
+      const learned =
+        learnedRes.status === 'fulfilled'
+          ? learnedRes.value // { learned, learnedCount }
+          : { learned: cached.learned };
+
+      return { ...p, ...reactions, ...learned };
+    })
+  );
 }
