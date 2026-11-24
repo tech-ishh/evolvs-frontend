@@ -609,6 +609,33 @@
   color: rgba(9,3,15,0.4);
   transition: background 0.15s ease, color 0.15s ease;
 }
+/* "Coming soon" popup above the composer */
+.mp-composer { position: relative; }
+
+.mp-coming-soon {
+  position: absolute;
+  left: 24px;
+  bottom: calc(100% - 6px);
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #09030F;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(9, 3, 15, 0.25);
+  animation: mp-soon-in 0.2s ease-out;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes mp-soon-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 480px) {
+  .mp-coming-soon { left: 12px; }
+}
 .mp-composer-icon-btn:hover {
   background: rgba(170,69,245,0.08);
   color: #AA45F5;

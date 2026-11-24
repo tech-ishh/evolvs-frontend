@@ -205,6 +205,16 @@ function MessageBubble({ msg, conv }) {
 function MessageComposer({ onSend }) {
   const [text, setText] = useState('');
   const textareaRef = useRef(null);
+  const [soon, setSoon] = useState(false);
+  const soonTimer = useRef(null);
+
+  const showComingSoon = useCallback(() => {
+    setSoon(true);
+    clearTimeout(soonTimer.current);
+    soonTimer.current = setTimeout(() => setSoon(false), 1800);
+  }, []);
+
+  useEffect(() => () => clearTimeout(soonTimer.current), []);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -234,15 +244,23 @@ function MessageComposer({ onSend }) {
 
   return (
     <div className="mp-composer">
+      {soon && (
+        <div className="mp-coming-soon" role="status" aria-live="polite">
+          Coming soon
+        </div>
+      )}
       <div className="mp-composer-inner">
         <div className="mp-composer-actions">
-          <button className="mp-composer-icon-btn" aria-label="Attach file">
+          <button type="button" className="mp-composer-icon-btn" aria-label="Attach file"
+            onClick={showComingSoon}>
             <Paperclip size={17} />
           </button>
-          <button className="mp-composer-icon-btn" aria-label="Send image">
+          <button type="button" className="mp-composer-icon-btn" aria-label="Send image"
+            onClick={showComingSoon}>
             <Image size={17} />
           </button>
-          <button className="mp-composer-icon-btn" aria-label="Emoji">
+          <button type="button" className="mp-composer-icon-btn" aria-label="Emoji"
+            onClick={showComingSoon}>
             <Smile size={17} />
           </button>
         </div>
@@ -463,58 +481,58 @@ export default function MessagesPage() {
   }, []);
 
   const activeIdRef = useRef(null);
-useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
+  useEffect(() => { activeIdRef.current = activeId; }, [activeId]);
 
-// ── Real-time messages ──
-useEffect(() => {
-  socketService.connect();   // must be called BEFORE onMessageNew
+  // ── Real-time messages ──
+  useEffect(() => {
+    socketService.connect();   // must be called BEFORE onMessageNew
 
-  const off = socketService.onMessageNew(async (payload) => {
-    const raw = payload?.message ?? payload;
-    const convId = payload?.conversationId ?? raw?.conversationId;
-    if (!convId) return;
+    const off = socketService.onMessageNew(async (payload) => {
+      const raw = payload?.message ?? payload;
+      const convId = payload?.conversationId ?? raw?.conversationId;
+      if (!convId) return;
 
-    const msg = normaliseMessage(raw, myId);
-    if (msg.sender === 'me') return;                 // I already added it when sending
+      const msg = normaliseMessage(raw, myId);
+      if (msg.sender === 'me') return;                 // I already added it when sending
 
-    const isActive = String(activeIdRef.current) === String(convId);
+      const isActive = String(activeIdRef.current) === String(convId);
 
-    // 1) append to the open chat (no duplicates)
-    setAllMessages((prev) => {
-      const list = prev[convId];
-      if (!list) return prev;
-      if (list.some((m) => String(m.id) === String(msg.id))) return prev;
-      return { ...prev, [convId]: [...list, msg] };
+      // 1) append to the open chat (no duplicates)
+      setAllMessages((prev) => {
+        const list = prev[convId];
+        if (!list) return prev;
+        if (list.some((m) => String(m.id) === String(msg.id))) return prev;
+        return { ...prev, [convId]: [...list, msg] };
+      });
+
+      // 2) update the sidebar
+      let found = false;
+      setConversations((prev) =>
+        prev.map((c) => {
+          if (String(c.id) !== String(convId)) return c;
+          found = true;
+          return {
+            ...c,
+            lastMessage: msg.text,
+            timestamp: msg.timestamp,
+            unreadCount: isActive ? 0 : (c.unreadCount || 0) + 1,
+          };
+        })
+      );
+      if (!found) {
+        try { setConversations(await messageService.getConversations(myId)); } catch { }
+      }
+
+      // 3) chat is open → mark read
+      if (isActive) messageService.markRead(convId).catch(() => { });
     });
 
-    // 2) update the sidebar
-    let found = false;
-    setConversations((prev) =>
-      prev.map((c) => {
-        if (String(c.id) !== String(convId)) return c;
-        found = true;
-        return {
-          ...c,
-          lastMessage: msg.text,
-          timestamp: msg.timestamp,
-          unreadCount: isActive ? 0 : (c.unreadCount || 0) + 1,
-        };
-      })
-    );
-    if (!found) {
-      try { setConversations(await messageService.getConversations(myId)); } catch {}
-    }
-
-    // 3) chat is open → mark read
-    if (isActive) messageService.markRead(convId).catch(() => {});
-  });
-
-  return () => {
-    off();
-    socketService.disconnect();
-  };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [myId]);
+    return () => {
+      off();
+      socketService.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myId]);
 
   const handleStartChat = async (person) => {
     try {
