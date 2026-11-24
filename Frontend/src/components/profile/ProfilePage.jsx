@@ -426,9 +426,12 @@ function GridItem({ post }) {
       ) : hasSrc ? (
         isVideo ? (
           <video
-            src={mediaSrc}
-            poster={post.media?.poster || ''}
-            preload="none"
+            src={post.media?.poster ? mediaSrc : `${mediaSrc}#t=0.5`}
+            poster={post.media?.poster || undefined}
+            preload="metadata"
+            muted
+            playsInline
+            disablePictureInPicture
           />
         ) : (
           <img
