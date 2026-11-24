@@ -614,27 +614,31 @@
   from { transform: translateY(24px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
-
 .pp-modal-header {
   flex: 0 0 auto;
-  padding: 10px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid rgba(9, 3, 15, 0.07);
 }
 
 .pp-modal-title {
   font-size: 17px;
   font-weight: 700;
   color: #09030F;
-  margin: 0 0 3px;
-  padding: 10px;
+  margin: 0 0 2px;
+  padding: 0;
+  line-height: 1.3;
 }
 
 .pp-modal-subtitle {
   font-size: 12px;
   color: #8b7aa3;
   margin: 0;
-  padding:10px;
+  padding: 0;
 }
-
 .pp-modal-close-btn {
   width: 34px;
   height: 34px;
@@ -666,7 +670,7 @@
   overflow-y: scroll;
   overflow-x: hidden;
 
-  padding: 16px 24px;
+  padding: 0 24px 12px;
   overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: stable;
@@ -697,6 +701,16 @@
 
 .pp-modal-domain-header {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  background: #faf7ff;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .pp-modal-domain-header:hover { background: rgba(170,69,245,0.06); }
@@ -801,13 +815,19 @@
 .pp-modal-skill-chip.selected:hover { background: rgba(170,69,245,0.18); }
 
 /* Footer */
-.pp-modal-footer {
-  flex: 0 0 auto;
-}
 .pp-modal-footer-actions {
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+.pp-modal-footer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid rgba(9, 3, 15, 0.07);
+  background: #fff;
 }
 
 .pp-modal-cancel-btn {
@@ -879,17 +899,48 @@
 /* ─── Responsive: modal on mobile ─────────────────────────────────────── */
 @media (max-width: 599px) {
   .pp-modal-overlay { align-items: flex-end; padding: 0; }
+
   .pp-modal {
     max-width: 100%;
+    height: 88dvh;
+    max-height: 88dvh;
     border-radius: 20px 20px 0 0;
-    max-height: 85vh;
   }
-  .pp-modal-header { padding: 18px 18px 14px; }
-  .pp-modal-body { padding: 12px 18px; }
-  .pp-modal-footer { padding: 12px 18px 24px; }
-  .pp-modal-footer-actions { flex-direction: column-reverse; }
+
+  .pp-modal-header { padding: 16px 16px 12px; }
+  .pp-modal-title { font-size: 16px; }
+
+  .pp-modal-body { padding: 0 16px 12px; gap: 8px; }
+
+  /* 2 x 2 buttons instead of messy wrapping */
+  .pp-bucket-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .pp-bucket-btn {
+    font-size: 0.74rem;
+    padding: 8px 10px;
+    border-radius: 12px;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.2;
+  }
+
+  .pp-modal-skills-grid { max-height: 220px; padding: 10px 12px 12px; }
+
+  /* Save / Cancel side by side, safe-area for iPhone */
+  .pp-modal-footer {
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+  .pp-modal-footer-actions { flex-direction: row; gap: 10px; }
   .pp-modal-cancel-btn,
-  .pp-modal-save-btn { width: 100%; justify-content: center; }
+  .pp-modal-save-btn {
+    flex: 1;
+    width: auto;
+    justify-content: center;
+    padding: 11px 12px;
+  }
 }
 
 @media (min-width: 600px) and (max-width: 767px) {
@@ -1799,20 +1850,25 @@
   color: #77727f;
 }
 .pp-bucket-options { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .pp-bucket-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 8px 14px;
-  border: 2px solid rgba(9, 3, 15, 0.85);
+  padding: 7px 12px;
+  border: 1.5px solid rgba(9, 3, 15, 0.18);
   border-radius: 999px;
   background: #fff;
   color: #09030f;
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
 }
+.pp-bucket-btn:hover { border-color: #aa45f5; }
+
 .pp-bucket-btn.active { background: #aa45f5; border-color: #aa45f5; color: #fff; }
 .pp-bucket-count {
   min-width: 20px;
