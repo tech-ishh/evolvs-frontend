@@ -1124,6 +1124,7 @@ select {
   .nav-left .nav-item span:not(.nav-who-icon) {
     display: none;
   }
+
   .login-page-container {
     padding: 0;
     align-items: flex-start;
@@ -1144,6 +1145,10 @@ select {
   .nav-left .nav-item:nth-child(2),
   .login-nav-btn {
     display: none;
+  }
+
+  .nav-item {
+    cursor: pointer;
   }
 
   .logo {
@@ -1307,6 +1312,7 @@ select {
   .form-heading h2 {
     font-size: 20px;
   }
+
   .logo .evolv-logo-image {
     width: 76px;
     max-height: 26px;

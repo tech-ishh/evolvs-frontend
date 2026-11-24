@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { authService } from "../../services/authService.js";
 import evolvLogo from "/logo-remove.png";
 import { navigate } from '../../utils/navigate.js';
-import {Info} from "lucide-react";
+import { Info } from "lucide-react";
 
 import "./LoginPage.css";
 
@@ -678,8 +678,10 @@ const LoginPage = () => {
         {/* Top Navbar matching Reference Image */}
         <header className="navbar">
           <div className="nav-left">
-            <div className="nav-item">
-              <span className="nav-who-icon"><Info /></span>
+            <div className="nav-item" onClick={() => navigate('/about')}>
+              <span className="nav-who-icon">
+                <Info size={20} />
+              </span>
               <span>About Us</span>
             </div>
           </div>

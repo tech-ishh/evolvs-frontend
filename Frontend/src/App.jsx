@@ -17,6 +17,7 @@ import SearchPage from './components/search/SearchPage.jsx';
 import UserProfilePage from './components/userProfile/UserProfilePage.jsx';
 import DocumentViewerPage from './components/document/DocumentViewerPage.jsx';
 import LearningPage from "./components/learning/LearningPage.jsx";
+import AboutPage from './components/about/AboutPage.jsx';
 import {
   guardProtectedRoute, startSessionWatcher,
   isTokenExpired, getStoredToken, msUntilExpiry, forceLogout,
@@ -61,7 +62,7 @@ function renderAdminRoute(route) {
 function getRoute() {
   return window.location.pathname.replace(/\/+$/, '') || '/';
 }
-const PUBLIC_ROUTES = ['/', '/login', '/signup', '/terms', '/privacy'];
+const PUBLIC_ROUTES = ['/', '/login', '/signup', '/terms', '/privacy', '/about'];
 
 function isPublicProfileRoute(route) {
   return /^\/(u|in)\/[^/]+$/.test(route);
@@ -224,6 +225,9 @@ if (!isPublic && isTokenExpired()) {
   }
   if (route.startsWith('/connections/')) {
     return <ConnectionsPage />;
+  }
+    if (route === '/about') {
+    return <AboutPage />;
   }
   if (route === '/terms') return <LegalPage type="terms" />;
   if (route === '/privacy') return <LegalPage type="privacy" />;
