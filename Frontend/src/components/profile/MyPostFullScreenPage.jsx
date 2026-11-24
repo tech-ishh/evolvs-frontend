@@ -7,6 +7,12 @@ import { authService } from '../../services/authService.js';
 import { homePostService } from '../../services/homePostService.js';
 import { navigate } from '../../utils/navigate.js';
 import CommentPanel from '../shared/CommentPanel.jsx';
+import {
+  getPostReactions,
+  getPostLearned,
+  normaliseReactions,
+  getCachedFlags,
+} from '../../services/reactionTotals.js';
 
 const fmt = (n = 0) => (n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'K' : String(n));
 const isViewable = (p) => ['image', 'video'].includes(p?.media?.type) && p?.media?.src;
@@ -57,21 +63,30 @@ export default function MyPostFullScreenPage() {
         const mine = await homePostService.getMyPosts(userId).catch(() => []);
         const list = (mine || []).filter(isViewable);
 
+        const isNumericId = (id) => /^\d+$/.test(String(id));
+
         const enriched = await Promise.all(
           list.map(async (p) => {
-            try {
-              const r = await homePostService.getReactions(p.id);
-              const c = r?.counts ?? {};
-              return {
-                ...p,
-                appreciations: typeof c.APPRECIATE === 'number' ? c.APPRECIATE : p.appreciations,
-                helpfulCount: typeof c.HELPFUL === 'number' ? c.HELPFUL : p.helpfulCount,
-                appreciated: r?.myReaction === 'APPRECIATE' || p.appreciated,
-                helpful: r?.myReaction === 'HELPFUL' || p.helpful,
-              };
-            } catch {
-              return p;
-            }
+            if (!isNumericId(p.id)) return p;
+
+            const cached = getCachedFlags(p.id);
+
+            const [reactionRes, learnedRes] = await Promise.allSettled([
+              getPostReactions(p.id),   // appreciate + helpful
+              getPostLearned(p.id),     // learned count + my learned state
+            ]);
+
+            const reactions =
+              reactionRes.status === 'fulfilled'
+                ? normaliseReactions(reactionRes.value, p.id)
+                : { appreciated: cached.appreciated, helpful: cached.helpful };
+
+            const learned =
+              learnedRes.status === 'fulfilled'
+                ? learnedRes.value            // { learned, learnedCount }
+                : { learned: cached.learned };
+
+            return { ...p, ...reactions, ...learned };
           })
         );
         if (cancelled) return;
@@ -128,46 +143,79 @@ export default function MyPostFullScreenPage() {
     if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
   };
 
+  const syncLearned = useCallback(async (postId) => {
+    try {
+      const l = await getPostLearned(postId);
+      setPosts((ps) => ps.map((p) =>
+        String(p.id) !== String(postId) ? p : { ...p, ...l }));
+    } catch (e) {
+      console.warn('[syncLearned] failed:', e.message);
+    }
+  }, []);
+
+  const syncReactions = useCallback(async (postId) => {
+    try {
+      const r = normaliseReactions(await getPostReactions(postId), postId);
+      setPosts((ps) => ps.map((p) =>
+        String(p.id) !== String(postId) ? p : {
+          ...p,
+          appreciated: r.appreciated,
+          appreciations: r.appreciations,
+          helpful: r.helpful,
+          helpfulCount: r.helpfulCount,
+        }));
+    } catch (e) {
+      console.warn('[syncReactions] failed:', e.message);
+    }
+  }, []);
+
   const toggleReaction = useCallback(async (postId, type) => {
     const key = `reaction:${postId}:${type}`;
     if (pending.current.has(key)) return;
+
+    const before = postsRef.current.find((p) => String(p.id) === String(postId));
+    if (!before) return;
     pending.current.add(key);
 
-    const snapshot = postsRef.current;
-    const current = snapshot.find((p) => String(p.id) === String(postId));
-    if (!current) { pending.current.delete(key); return; }
-
-    const mine = REACTION_FIELDS[type];
-    const was = Boolean(current[mine.flag]);
+    const f = REACTION_FIELDS[type];
+    const was = Boolean(before[f.flag]);
     const next = !was;
 
     setPosts((ps) => ps.map((p) =>
       String(p.id) !== String(postId) ? p : {
         ...p,
-        [mine.flag]: next,
-        [mine.count]: Math.max(0, (p[mine.count] ?? 0) + (next ? 1 : -1)),
+        [f.flag]: next,
+        [f.count]: Math.max(0, (p[f.count] ?? 0) + (next ? 1 : -1)),
       }));
 
     try {
       if (was) await homePostService.removeReaction(postId, type);
       else await homePostService.addReaction(postId, type);
     } catch (err) {
-      if (!(was && err.status === 404)) setPosts(snapshot);
-    } finally {
+      console.error('[Reaction] failed:', type, err.status, err.message);
+      setPosts((ps) => ps.map((p) =>
+        String(p.id) !== String(postId) ? p : {
+          ...p,
+          [f.flag]: before[f.flag],
+          [f.count]: before[f.count],
+        }));
       pending.current.delete(key);
+      return;
     }
-  }, []);
+
+    pending.current.delete(key);
+    await syncReactions(postId);
+  }, [syncReactions]);
 
   const toggleLearned = useCallback(async (postId) => {
     const key = `learned:${postId}`;
     if (pending.current.has(key)) return;
+
+    const before = postsRef.current.find((p) => String(p.id) === String(postId));
+    if (!before) return;
     pending.current.add(key);
 
-    const snapshot = postsRef.current;
-    const current = snapshot.find((p) => String(p.id) === String(postId));
-    if (!current) { pending.current.delete(key); return; }
-
-    const was = Boolean(current.learned);
+    const was = Boolean(before.learned);
     const next = !was;
 
     setPosts((ps) => ps.map((p) =>
@@ -181,11 +229,20 @@ export default function MyPostFullScreenPage() {
       if (was) await homePostService.unmarkLearned(postId);
       else await homePostService.markLearned(postId);
     } catch (err) {
-      if (!(was && err.status === 404)) setPosts(snapshot);
-    } finally {
+      console.error('[Learned] failed:', err.status, err.message);
+      setPosts((ps) => ps.map((p) =>
+        String(p.id) !== String(postId) ? p : {
+          ...p,
+          learned: before.learned,
+          learnedCount: before.learnedCount,
+        }));
       pending.current.delete(key);
+      return;
     }
-  }, []);
+
+    pending.current.delete(key);
+    await syncLearned(postId);
+  }, [syncLearned]);
 
   const onCommentCount = useCallback((postId, delta) => {
     setPosts((ps) => ps.map((p) =>
@@ -248,15 +305,23 @@ export default function MyPostFullScreenPage() {
         .fs-nav.left { left:16px; } .fs-nav.right { right:16px; }
 
         .fs-bottom { position:absolute; left:0; right:0; bottom:0; z-index:5; padding:60px 18px 20px;
-          background:linear-gradient(0deg,rgba(0,0,0,.8),transparent); pointer-events:none; }
-        .fs-bottom > * { pointer-events:auto; }
-        .fs-caption { max-width:640px; margin:0 auto 12px; font-size:14px; line-height:1.5; word-break:break-word; }
-        .fs-actions { max-width:640px; margin:0 auto; display:flex; gap:22px; }
-        .fs-act { display:inline-flex; align-items:center; gap:7px; border:none; background:transparent;
-          color:#fff; font-size:14px; font-weight:600; cursor:pointer; padding:4px 0; }
+  background:linear-gradient(0deg,rgba(0,0,0,.8),transparent); pointer-events:none; }
+.fs-bottom > * { pointer-events:auto; }
+
+/* caption: bottom-left, leaves space for the right-side buttons */
+.fs-caption { max-width:640px; margin:0 auto; padding-right:64px; font-size:14px;
+  line-height:1.5; word-break:break-word; text-shadow:0 1px 3px rgba(0,0,0,.6); }
+
+/* reactions: vertical column on the right */
+.fs-actions { position:absolute; right:12px; bottom:20px; z-index:6;
+  display:flex; flex-direction:column; align-items:center; gap:20px; }
+        .fs-act { display:flex; flex-direction:column; align-items:center; gap:4px; border:none;
+  background:transparent; color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+  padding:4px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
         .fs-act:active { transform:scale(.9); }
         .fs-act.on-pink { color:#ff6b8b; } .fs-act.on-blue { color:#8c8dff; } .fs-act.on-green { color:#4ade80; }
-        .fs-video-lift { padding-bottom:70px; } /* keep video controls clear of the overlay */
+        .fs-video-lift { padding-bottom:70px; }
+.fs-video-lift .fs-actions { bottom:90px; }
 
         .fs-msg { color:#cfc8e0; font-size:15px; }
         .fs-modal { position:fixed; inset:0; z-index:80; background:rgba(0,0,0,.65);
@@ -269,7 +334,11 @@ export default function MyPostFullScreenPage() {
         .fs-modal-actions button { flex:1; padding:11px; border-radius:10px; border:none; font-weight:700; font-size:14px; cursor:pointer; }
         .fs-cancel { background:#f1edf9; color:#17102b; } .fs-delete { background:#d1293d; color:#fff; }
         .fs-modal-actions button:disabled { opacity:.6; cursor:not-allowed; }
-        @media (max-width:640px) { .fs-nav { display:none; } }
+       @media (max-width:640px) {
+  .fs-nav { display:none; }
+  .fs-actions { right:8px; gap:18px; }
+  .fs-caption { padding-right:56px; }
+}
       `}</style>
 
       <div className="fs-top">
