@@ -3237,7 +3237,6 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
   const feedScrollRef = useRef(null);
   const sentinelRef = useRef(null);
   const loadingMoreRef = useRef(false);
-  const feedVersionRef = useRef(0);   // ← NEW: dar navi feed session e +1
   const feedContextRef = useRef({ currentUserId: null, profileData: null });
 
 
@@ -3255,50 +3254,48 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
     const idToName = skillNamesRef.current || {};
     const authUser = authService.getCurrentUser();
 
-    const mappedPosts = backendPosts
-      .filter((post) => post.moderation_status !== 'REVIEW')
-      .map((post) => {
-        const base = homePostService._normalisePost(post);
-        const conn = connectionMap.get(String(base.creator?.id ?? post.userId));
+    const mappedPosts = backendPosts.map((post) => {
+      const base = homePostService._normalisePost(post);
+      const conn = connectionMap.get(String(base.creator?.id ?? post.userId));
 
-        const namesFromIds = (base.skillIds || [])
-          .map((id) => idToName[Number(id)])
-          .filter(Boolean);
+      const namesFromIds = (base.skillIds || [])
+        .map((id) => idToName[Number(id)])
+        .filter(Boolean);
 
-        const normalised = {
-          ...base,
-          tags: base.tags.length
-            ? base.tags
-            : namesFromIds.length
-              ? namesFromIds
-              : postSkillCache.get(base.id),
-          liked: post.liked ?? false,
-          saved: post.saved ?? false,
-          connectionStatus: conn?.status ?? 'none',
-          connectionId: conn?.connectionId ?? null,
+      const normalised = {
+        ...base,
+        tags: base.tags.length
+          ? base.tags
+          : namesFromIds.length
+            ? namesFromIds
+            : postSkillCache.get(base.id),
+        liked: post.liked ?? false,
+        saved: post.saved ?? false,
+        connectionStatus: conn?.status ?? 'none',
+        connectionId: conn?.connectionId ?? null,
+      };
+
+      const creatorId = normalised.creator?.id ?? post.userId ?? post.user_id ?? null;
+      const missingName = !normalised.creator?.name;
+      const isCurrentUser =
+        currentUserId != null &&
+        creatorId != null &&
+        String(creatorId) === String(currentUserId);
+
+      if (missingName && isCurrentUser && profileData) {
+        return {
+          ...normalised,
+          creator: {
+            ...normalised.creator,
+            id: currentUserId,
+            name: profileData.fullName ?? profileData.name ?? profileData.username ?? authUser?.name ?? '',
+            username: profileData.username ?? authUser?.email?.split('@')[0] ?? '',
+            avatar: profileData.avatarUrl ?? profileData.avatar ?? '',
+          },
         };
-
-        const creatorId = normalised.creator?.id ?? post.userId ?? post.user_id ?? null;
-        const missingName = !normalised.creator?.name;
-        const isCurrentUser =
-          currentUserId != null &&
-          creatorId != null &&
-          String(creatorId) === String(currentUserId);
-
-        if (missingName && isCurrentUser && profileData) {
-          return {
-            ...normalised,
-            creator: {
-              ...normalised.creator,
-              id: currentUserId,
-              name: profileData.fullName ?? profileData.name ?? profileData.username ?? authUser?.name ?? '',
-              username: profileData.username ?? authUser?.email?.split('@')[0] ?? '',
-              avatar: profileData.avatarUrl ?? profileData.avatar ?? '',
-            },
-          };
-        }
-        return normalised;
-      });
+      }
+      return normalised;
+    });
 
     const isNumericId = (id) => /^\d+$/.test(String(id));
 
@@ -3334,9 +3331,6 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
     let cancelled = false;
 
     const loadFeed = async () => {
-      feedVersionRef.current += 1;
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
       try {
         setPostsLoading(true);
         setPostsAuthError(null);
@@ -3393,7 +3387,6 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
     if (loadingMoreRef.current) return;
     if (!pagination.hasMore || !pagination.nextCursor) return;
 
-    const version = feedVersionRef.current;   // ← kayi session mate request chhe
     loadingMoreRef.current = true;
     setLoadingMore(true);
     setLoadMoreError(null);
@@ -3402,29 +3395,17 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
       const res = await homePostService.getPersonalizedFeed(pagination.nextCursor);
       const enriched = await enrichPosts(res.posts);
 
-      // Feed refresh thai gayu hoy to aa juna session no response ignore kar
-      if (version !== feedVersionRef.current) return;
-
       setPosts((prev) => appendUnique(prev, enriched));
       setPagination(res.pagination);
-      if (res.feedMode) setFeedMode(res.feedMode);
+      if (res.feedMode) setFeedMode(res.feedMode);            // may flip INITIAL -> EXPANDED
       setHighlightedSkill(res.highlightedSkill);
       if (res.skillDistribution.length) setSkillDistribution(res.skillDistribution);
     } catch (err) {
-      if (version !== feedVersionRef.current) return;
       console.error('Failed to load more posts:', err);
-
-      // Feed session expire / invalid cursor → page 1 thi navo session start kar
-      if ([400, 404, 410].includes(err?.status)) {
-        setReloadKey((k) => k + 1);
-        return;
-      }
       setLoadMoreError(err?.message || 'Could not load more posts.');
     } finally {
-      if (version === feedVersionRef.current) {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      }
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
     }
   }, [pagination, enrichPosts]);
 
