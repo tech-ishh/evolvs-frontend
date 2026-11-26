@@ -4,7 +4,7 @@ import {
   Volume2, VolumeX, Play,
 } from 'lucide-react';
 import { authService } from '../../services/authService.js';
-import { homePostService } from '../../services/homePostService.js';
+import { homePostService, postSkillCache } from '../../services/homePostService.js';
 import CommentPanel from '../shared/CommentPanel.jsx';
 import { useInView, useLearningTracker } from '../hooks/useLearningTracker.js';
 import { navigate } from '../../utils/navigate.js';
@@ -20,6 +20,20 @@ const isMedia = (p) => isVideo(p) || isImage(p);
 
 const fmt = (n = 0) =>
   n >= 1000 ? (n / 1000).toFixed(1).replace('.0', '') + 'K' : String(n);
+let lastGivenList = null; // survives StrictMode double-run
+
+// Cursor saved by Home so we can continue the same feed
+function readCursorInfo() {
+  try {
+    const info = JSON.parse(sessionStorage.getItem('evolv-reel-cursor') || 'null');
+    const start =
+      sessionStorage.getItem('evolv-reel-start') ||
+      sessionStorage.getItem('evolv-image-start');
+    // only trust it if it belongs to this open (avoids stale cursor)
+    if (info?.cursor && String(info.startId) === String(start)) return info;
+  } catch { /* ignore */ }
+  return null;
+}
 
 function goBack() {
   const back =
@@ -28,6 +42,10 @@ function goBack() {
     '/home';
   sessionStorage.removeItem('evolv-reel-back');
   sessionStorage.removeItem('evolv-image-back');
+  sessionStorage.removeItem('evolv-reel-start');
+  sessionStorage.removeItem('evolv-image-start');
+  sessionStorage.removeItem('evolv-reel-cursor');
+  lastGivenList = null;
   clearListPosts();
   navigate(back);
 }
@@ -269,6 +287,11 @@ export default function ReelsPage() {
   const feedRef = useRef(null);
   const pending = useRef(new Set());
   const postsRef = useRef([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const cursorRef = useRef(null);
+  const hasMoreRef = useRef(false);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => { postsRef.current = posts; }, [posts]);
 
@@ -278,11 +301,15 @@ export default function ReelsPage() {
     (async () => {
       try {
         let list;
+        let pg = { hasMore: false, nextCursor: null };
 
-        const given = takeListPosts();
+        const given = takeListPosts() || lastGivenList;
+        if (given) lastGivenList = given;
         if (given) {
-          // opened from Discover / Profile
+          // opened from Home / Discover / Profile
           list = given.filter(isMedia);
+          const info = readCursorInfo();
+          if (info) pg = { hasMore: true, nextCursor: info.cursor };
         } else {
           // opened from Home
           const userId = user?.id ?? user?.userId ?? user?._id ?? null;
@@ -299,13 +326,23 @@ export default function ReelsPage() {
             if (p?.id && isMedia(p)) map.set(String(p.id), p);
           });
           list = [...map.values()];
+          const p = feedRes?.pagination;
+          pg = {
+            hasMore: Boolean(p?.hasMore && p?.nextCursor),
+            nextCursor: p?.nextCursor ?? null,
+          };
         }
 
         const withCreators = await enrichCreators(list);
         const withReactions = await attachReactionData(withCreators);
         const withCounts = await homePostService.attachCommentCounts(withReactions);
 
-        if (!cancelled) setPosts(withCounts);
+        if (!cancelled) {
+          cursorRef.current = pg.nextCursor;
+          hasMoreRef.current = pg.hasMore;
+          setHasMore(pg.hasMore);
+          setPosts(withCounts);
+        }
       } catch (error) {
         console.error('Failed to load feed:', error);
       } finally {
@@ -319,17 +356,89 @@ export default function ReelsPage() {
   // Jump to the item that was clicked (works for both old keys)
   useEffect(() => {
     if (loading || posts.length === 0) return;
+
     const startId =
       sessionStorage.getItem('evolv-reel-start') ||
       sessionStorage.getItem('evolv-image-start');
     if (!startId) return;
-    const el = feedRef.current?.querySelector(`[data-post-id="${startId}"]`);
-    if (el) {
-      el.scrollIntoView();
-      sessionStorage.removeItem('evolv-reel-start');
-      sessionStorage.removeItem('evolv-image-start');
-    }
+
+    const el = feedRef.current?.querySelector(
+      `[data-post-id="${CSS.escape(String(startId))}"]`
+    );
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'instant' });
+
+    // always clear, so a stale id can never win next time
+    sessionStorage.removeItem('evolv-reel-start');
+    sessionStorage.removeItem('evolv-image-start');
   }, [loading, posts.length]);
+
+  // ── Infinite scroll: load next page of the same feed ──
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMoreRef.current || !cursorRef.current) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    try {
+      let cursor = cursorRef.current;
+      let more = true;
+      let fresh = [];
+
+      // a page may contain only text/doc posts, so try a few pages
+      for (let i = 0; i < 5 && more && fresh.length === 0; i++) {
+        const res = await homePostService.getPersonalizedFeed(cursor);
+        cursor = res.pagination.nextCursor;
+        more = res.pagination.hasMore;
+
+        const known = new Set(postsRef.current.map((p) => String(p.id)));
+        fresh = res.posts
+          .map((raw) => {
+            const base = homePostService._normalisePost(raw);
+            return {
+              ...base,
+              tags: base.tags.length ? base.tags : postSkillCache.get(base.id),
+            };
+          })
+          .filter((p) => p?.id && isMedia(p) && !known.has(String(p.id)));
+      }
+
+      cursorRef.current = cursor;
+      hasMoreRef.current = more;
+      setHasMore(more);
+
+      if (fresh.length) {
+        const a = await enrichCreators(fresh);
+        const b = await attachReactionData(a);
+        const c = await homePostService.attachCommentCounts(b);
+        setPosts((prev) => {
+          const seen = new Set(prev.map((p) => String(p.id)));
+          return [...prev, ...c.filter((p) => !seen.has(String(p.id)))];
+        });
+      }
+    } catch (err) {
+      console.error('[Reels] load more failed:', err);
+    } finally {
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+    }
+  }, []);
+
+  // When the 3rd-last item becomes visible, fetch the next page
+  useEffect(() => {
+    if (loading || !hasMore || posts.length === 0) return undefined;
+    const root = feedRef.current;
+    if (!root) return undefined;
+
+    const items = root.querySelectorAll('.rl-item');
+    const target = items[Math.max(0, items.length - 3)];
+    if (!target) return undefined;
+
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { threshold: 0.1 }
+    );
+    io.observe(target);
+    return () => io.disconnect();
+  }, [loading, hasMore, posts.length, loadMore]);
 
   // Esc = back
   useEffect(() => {
@@ -398,12 +507,19 @@ export default function ReelsPage() {
         ? p
         : { ...p, comments: Math.max(0, (Number(p.comments) || 0) + delta) }));
   }, []);
+
   const openProfile = (userId, currentPostId) => {
-    // keep the same list, so browser Back returns to this exact post
     sessionStorage.setItem('evolv-list-posts', JSON.stringify(postsRef.current));
     sessionStorage.setItem('evolv-reel-start', String(currentPostId));
+    if (cursorRef.current) {
+      sessionStorage.setItem(
+        'evolv-reel-cursor',
+        JSON.stringify({ startId: String(currentPostId), cursor: cursorRef.current })
+      );
+    }
     navigate(`/profile/${userId}`);
   };
+
   if (!user) return null;
 
 
@@ -433,6 +549,15 @@ export default function ReelsPage() {
 
             />
           ))}
+        </div>
+      )}
+      {loadingMore && (
+        <div style={{
+          position: 'fixed', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+          padding: '6px 14px', borderRadius: 20, background: 'rgba(0,0,0,.6)',
+          color: '#fff', fontSize: 12, zIndex: 20,
+        }}>
+          Loading more…
         </div>
       )}
 

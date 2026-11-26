@@ -963,19 +963,43 @@ function HomeHeader({ user, profileAvatar, profileName, onOpenSidebar, onOpenRig
 //   );
 // }
 
-function openReel(postId) {
+// Latest media posts visible in Home (kept up to date by HomeFeed)
+let homeMediaList = [];
+let homeNextCursor = null;
+export const setHomeMediaList = (list, cursor = null) => {
+  homeMediaList = list;
+  homeNextCursor = cursor;
+};
+function openMedia(postId) {
+  // Only images + videos, same order as the Home feed
+  const list = homeMediaList.filter(
+    (p) =>
+      (p.media?.type === 'video' || p.media?.type === 'image') && p.media?.src
+  );
+
+  try {
+    sessionStorage.setItem('evolv-list-posts', JSON.stringify(list));
+  } catch { /* ignore quota errors */ }
+  try {
+    if (homeNextCursor) {
+      sessionStorage.setItem(
+        'evolv-reel-cursor',
+        JSON.stringify({ startId: String(postId), cursor: homeNextCursor })
+      );
+    } else {
+      sessionStorage.removeItem('evolv-reel-cursor');
+    }
+  } catch { /* ignore */ }
+
   sessionStorage.setItem('evolv-reel-start', String(postId));
+  sessionStorage.removeItem('evolv-image-start'); // avoid stale key
   sessionStorage.setItem('evolv-reel-back', window.location.pathname || '/home');
   navigate('/reels');
   window.dispatchEvent(new Event('navigated'));
 }
 
-function openImage(postId) {
-  sessionStorage.setItem('evolv-image-start', String(postId));
-  sessionStorage.setItem('evolv-reel-back', window.location.pathname || '/home');
-  navigate('/image');
-  window.dispatchEvent(new Event('navigated'));
-}
+const openReel = openMedia;
+const openImage = openMedia;
 
 function openDocument(postId) {
   sessionStorage.setItem('evolv-doc-start', String(postId));
@@ -3919,6 +3943,9 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
         p.tags.some((t) => norm(t).includes(norm(activeTab).split(' ')[0]))
     );
   }
+  useEffect(() => {
+    setHomeMediaList(visiblePosts, pagination.nextCursor);
+  }, [visiblePosts, pagination.nextCursor]);
 
   return (
     <div className="hp-feed-column">
