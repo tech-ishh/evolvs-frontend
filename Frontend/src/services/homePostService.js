@@ -853,12 +853,21 @@ export const homePostService = {
    * GET /api/posts/feed?cursor=...
    * Throws on failure so the UI can show an error state.
    */
+    // ── Personalised feed (session-based cursor: "<sessionId>:<offset>") ───────
   async getPersonalizedFeed(cursor = null) {
-    const params = new URLSearchParams();
-    if (cursor) params.set("cursor", String(cursor));
-    const qs = params.toString() ? `?${params.toString()}` : "";
+    // cursor "uuid:10" ma ':' hoy chhe, etle encode karvu jaruri chhe
+    const qs = cursor ? `?cursor=${encodeURIComponent(String(cursor))}` : "";
 
     const result = await request(`${FEED_ENDPOINT}${qs}`, { method: "GET" });
+    console.log('[FEED RAW]', {
+  cursor,
+  feedMode: result?.feedMode,
+  keys: Object.keys(result || {}),
+  dataIsArray: Array.isArray(result?.data),
+  dataLength: result?.data?.length,
+  pagination: result?.pagination,
+  distribution: result?.skillDistribution,
+});
 
     const posts = Array.isArray(result?.data)
       ? result.data
@@ -869,19 +878,31 @@ export const homePostService = {
           : [];
 
     const pg = result?.pagination ?? {};
+    const nextCursor = pg.nextCursor ? String(pg.nextCursor) : null;
+
+    // "7041477a-....:10" → sessionId + offset
+    const sep = nextCursor ? nextCursor.lastIndexOf(":") : -1;
+    const feedSessionId = sep > 0 ? nextCursor.slice(0, sep) : null;
+    const offset = sep > 0 ? Number(nextCursor.slice(sep + 1)) : null;
 
     return {
       posts,
-      feedMode: result?.feedMode ?? null,               // "INITIAL" | "EXPANDED"
+      feedMode: result?.feedMode ?? null,
       highlightedSkill: result?.highlightedSkill ?? null,
       skillDistribution: Array.isArray(result?.skillDistribution)
         ? result.skillDistribution
         : [],
+      feedSessionId,
       pagination: {
         limit: pg.limit ?? 10,
-        // never say "has more" without a cursor, otherwise infinite loop
-        hasMore: Boolean(pg.hasMore && pg.nextCursor),
-        nextCursor: pg.nextCursor ?? null,
+        // cursor vagar / empty page / same cursor hoy to "has more" nahi
+        hasMore: Boolean(
+          pg.hasMore &&
+          nextCursor &&
+          nextCursor !== (cursor ? String(cursor) : null)
+        ),
+        nextCursor,
+        offset,
       },
     };
   },
@@ -976,8 +997,8 @@ export const homePostService = {
       tags: extractSkillNames(p),
       skillIds: extractSkillIds(p),
       category: p.category ?? "Discover",
-      timestamp: p.createdAt
-        ? new Date(p.createdAt).toLocaleDateString()
+      timestamp: (p.publishedAt ?? p.createdAt)
+        ? new Date(p.publishedAt ?? p.createdAt).toLocaleDateString()
         : "Just now",
       creator: {
         id:
@@ -1106,6 +1127,7 @@ export const homePostService = {
       learned: Boolean(p.learned === true || p.isLearned || p.hasLearned),
       learnedCount: Number(
         p.learnedCount ??
+        p.learningCount ??
         p.learnings ??
         p.learnCount ??
         (typeof p.learned === 'number' ? p.learned : 0)
