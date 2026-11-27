@@ -292,6 +292,7 @@ export default function ReelsPage() {
   const cursorRef = useRef(null);
   const hasMoreRef = useRef(false);
   const loadingMoreRef = useRef(false);
+  const loadErrorRef = useRef(false);
 
   useEffect(() => { postsRef.current = posts; }, [posts]);
 
@@ -343,8 +344,9 @@ export default function ReelsPage() {
           setHasMore(pg.hasMore);
           setPosts(withCounts);
         }
-      } catch (error) {
-        console.error('Failed to load feed:', error);
+      } catch (err) {
+        console.error('[Reels] load more failed:', err);
+        loadErrorRef.current = true; // stop endless retry on repeated failure
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -424,7 +426,9 @@ export default function ReelsPage() {
 
   // When the 3rd-last item becomes visible, fetch the next page
   useEffect(() => {
-    if (loading || !hasMore || posts.length === 0) return undefined;
+    if (loading || loadingMore || !hasMore || posts.length === 0) return undefined;
+    if (loadErrorRef.current) return undefined;
+
     const root = feedRef.current;
     if (!root) return undefined;
 
@@ -438,7 +442,7 @@ export default function ReelsPage() {
     );
     io.observe(target);
     return () => io.disconnect();
-  }, [loading, hasMore, posts.length, loadMore]);
+  }, [loading, loadingMore, hasMore, posts.length, loadMore]);
 
   // Esc = back
   useEffect(() => {

@@ -74,8 +74,14 @@ function isPublicRoute(route) {
 export default function App() {
   const [route, setRoute] = useState(getRoute);
   const [allowed, setAllowed] = useState(false);
-  useEffect(() => enableDevtoolsGuard(), []);
-  
+  // Devtools guard: only on login and home. Other pages stay inspectable.
+  const GUARDED_ROUTES = ['/login', '/home'];
+
+  useEffect(() => {
+    if (!GUARDED_ROUTES.includes(route)) return undefined;
+    return enableDevtoolsGuard();   // returns a cleanup that removes the listeners
+  }, [route]);
+
   useEffect(() => {
     const sync = () => setRoute(getRoute());
     window.addEventListener('popstate', sync);
@@ -90,7 +96,7 @@ export default function App() {
 
   // Auto-logout the moment the token expires, even if the user is idle
   useEffect(() => {
-    if (isPublicRoute(route)) return; 
+    if (isPublicRoute(route)) return;
     const token = getStoredToken();
     if (!token) return;
 
@@ -105,7 +111,7 @@ export default function App() {
   // Also re-check when the tab becomes visible again (laptop sleep, etc.)
   useEffect(() => {
     const onVisible = () => {
-      if (isPublicRoute(route)) return; 
+      if (isPublicRoute(route)) return;
       if (document.visibilityState === 'visible' && getStoredToken() && isTokenExpired()) {
         forceLogout();
       }
@@ -115,27 +121,27 @@ export default function App() {
   }, [route]);
 
   // 1. The allowed effect
-useEffect(() => {
-  let cancelled = false;
+  useEffect(() => {
+    let cancelled = false;
 
-  if (route.startsWith('/admin/')) {
-    setAllowed(true);
-    return;
-  }
+    if (route.startsWith('/admin/')) {
+      setAllowed(true);
+      return;
+    }
 
-  // Public pages, public profiles and onboarding skip the guard
-  if (isPublicRoute(route) || route === '/onboarding') {
-    setAllowed(true);
-    return;
-  }
+    // Public pages, public profiles and onboarding skip the guard
+    if (isPublicRoute(route) || route === '/onboarding') {
+      setAllowed(true);
+      return;
+    }
 
-  setAllowed(false);
-  guardProtectedRoute().then((ok) => {
-    if (!cancelled) setAllowed(ok);
-  });
+    setAllowed(false);
+    guardProtectedRoute().then((ok) => {
+      if (!cancelled) setAllowed(ok);
+    });
 
-  return () => { cancelled = true; };
-}, [route]);
+    return () => { cancelled = true; };
+  }, [route]);
 
   useEffect(() => {
     if (window.location.pathname.startsWith('/admin/')) return;
@@ -148,14 +154,14 @@ useEffect(() => {
   }
   // ──────────────────────────────────────────────────────────────────────────
 
- // 2. The route guard (replace the old isPublic check)
-if (!allowed) return null;
+  // 2. The route guard (replace the old isPublic check)
+  if (!allowed) return null;
 
-const isPublic = isPublicRoute(route);
-if (!isPublic && isTokenExpired()) {
-  if (getStoredToken()) { forceLogout(); return null; }
-  return <Redirect to="/login" />;
-} 
+  const isPublic = isPublicRoute(route);
+  if (!isPublic && isTokenExpired()) {
+    if (getStoredToken()) { forceLogout(); return null; }
+    return <Redirect to="/login" />;
+  }
 
   // Logged-in user visiting /login or /signup
   if ((route === '/login' || route === '/signup') && !isTokenExpired()) {
@@ -226,7 +232,7 @@ if (!isPublic && isTokenExpired()) {
   if (route.startsWith('/connections/')) {
     return <ConnectionsPage />;
   }
-    if (route === '/about') {
+  if (route === '/about') {
     return <AboutPage />;
   }
   if (route === '/terms') return <LegalPage type="terms" />;

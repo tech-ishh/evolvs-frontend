@@ -34,7 +34,8 @@ import {
   LayoutDashboard,
   Tag,
   Image,
-  FileText
+  FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { CURIOSITY_DOMAINS } from '../onboarding/onboardingData.js';
 import InfoTip from '../info/InfoTip.jsx';
@@ -724,7 +725,7 @@ function HomeSidebar({ user, activeNav = 'home', isSidebarOpen, setIsSidebarOpen
 // ─────────────────────────────────────────────────────────────────────────────
 // HEADER (top of feed)
 // ─────────────────────────────────────────────────────────────────────────────
-function HomeHeader({ user, profileAvatar, profileName, onOpenSidebar, onOpenRightSidebar }) {
+function HomeHeader({ user, profileAvatar, profileName, onOpenSidebar, onOpenRightSidebar, onRefresh, refreshing }) {
   const { bell: pendingCount, messages: messageCount } = useUnreadCounts();
 
   const [search, setSearch] = useState('');
@@ -877,6 +878,16 @@ function HomeHeader({ user, profileAvatar, profileName, onOpenSidebar, onOpenRig
               {messageCount > 9 ? '9+' : messageCount}
             </span>
           )}
+        </button>
+        <button
+          type="button"
+          className="hp-icon-btn"
+          onClick={onRefresh}
+          disabled={refreshing}
+          aria-label="Refresh feed"
+          title="Refresh feed"
+        >
+          <RefreshCw size={20} className={refreshing ? 'hp-spin' : ''} aria-hidden="true" />
         </button>
 
         <button
@@ -3433,6 +3444,13 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
     }
   }, [pagination, enrichPosts]);
 
+  // ── Manual refresh: reload page 1 of the personalised feed ──
+  const handleRefresh = useCallback(() => {
+    if (postsLoading) return;                       // ignore double clicks
+    feedScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    setReloadKey((k) => k + 1);                     // re-runs the "Page 1" effect
+  }, [postsLoading]);
+
   // ── Infinite scroll: observe a sentinel at the bottom of the feed ──
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -3955,6 +3973,8 @@ function HomeFeed({ user, onOpenSidebar, onOpenRightSidebar }) {
         profileName={feedProfileName}
         onOpenSidebar={onOpenSidebar}
         onOpenRightSidebar={onOpenRightSidebar}
+        onRefresh={handleRefresh}
+        refreshing={postsLoading}
       />
       {/* <InterestTabs active={activeTab} onChange={setActiveTab} tabs={FEED_TABS} /> */}
 
