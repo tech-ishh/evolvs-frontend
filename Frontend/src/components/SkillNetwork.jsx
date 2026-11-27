@@ -134,10 +134,11 @@ export default function SkillNetwork({ activeSkill = null }) {
         />
 
         {/* Center Easel Stand Legs (supports the central synergy card) */}
+        {/* Center Easel Stand Legs (centered under the card at left: 54% → x ≈ 551) */}
         <g id="easel-legs">
-          <path d="M 488 360 L 472 455" stroke="#7E22CE" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
-          <path d="M 532 360 L 548 455" stroke="#7E22CE" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
-          <path d="M 510 360 L 510 458" stroke="#6B21A8" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
+          <path d="M 529 360 L 513 455" stroke="#7E22CE" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
+          <path d="M 573 360 L 589 455" stroke="#7E22CE" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
+          <path d="M 551 360 L 551 458" stroke="#6B21A8" strokeWidth="2.5" strokeLinecap="round" opacity="0.8" />
         </g>
       </motion.g>
 

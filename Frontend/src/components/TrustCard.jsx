@@ -36,7 +36,7 @@ export default function TrustCard() {
       whileHover={{ y: -2 }}
     >
       <h2 className="loop-card-title">
-        THE EVOLV LOOP
+        THE EVOLVS LOOP
       </h2>
 
       <div className="loop-steps-list">
