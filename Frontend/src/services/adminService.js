@@ -5,16 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const ADMIN_TOKEN_KEY = 'evolv_admin_token';
 const ADMIN_USER_KEY = 'evolv_admin_user';
-const DEMO_KEY = 'evolvs_admin_demo_session';
-
-const getDemoSession = () => {
-  try {
-    const s = JSON.parse(sessionStorage.getItem(DEMO_KEY));
-    return s?.role === 'admin' && s?.isDemo === true ? s : null;
-  } catch {
-    return null;
-  }
-};
+import { navigate } from '../utils/navigate.js';
 
 
 const getToken = () =>
@@ -57,15 +48,19 @@ const clearAdminSession = () => {
 const request = async (path, opts = {}) => {
   const url = `${API_BASE_URL}${path}`;
   const token = getToken();
-  if (!token && getDemoSession()) {
-    const err = new Error('Demo mode: backend data is not available.');
-    err.isDemo = true;
-    throw err;
+  const hasUser = !!(localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY));
+
+  // Not logged in at all
+  if (!token && !hasUser) {
+    clearAdminSession();
+    navigate('/admin/login');
+    throw new Error('Admin session expired. Please log in again.');
   }
 
-  if (!token || isTokenExpired(token)) {
+  // Token exists but expired
+  if (token && isTokenExpired(token)) {
     clearAdminSession();
-   navigate('/admin/login')
+    navigate('/admin/login');
     throw new Error('Admin session expired. Please log in again.');
   }
 
@@ -76,20 +71,19 @@ const request = async (path, opts = {}) => {
     ...(opts.headers ?? {}),
   };
 
-  const init = {
+  const response = await fetch(url, {
     ...opts,
     headers,
+    credentials: 'include', // needed if backend uses cookie session
     body:
       opts.body && typeof opts.body !== 'string' && !isFormData
         ? JSON.stringify(opts.body)
         : opts.body,
-  };
-
-  const response = await fetch(url, init);
+  });
 
   if (response.status === 401 || response.status === 403) {
     clearAdminSession();
-   navigate('/admin/login')
+    navigate('/admin/login');
     throw new Error('Admin access denied.');
   }
 
@@ -116,54 +110,66 @@ const demoEmpty = (promise) =>
 
 export const adminService = {
   isLoggedIn() {
-    if (getDemoSession()) return true;
     const token = getToken();
-    return !!token && !isTokenExpired(token) && isAdminToken(token);
+    if (token) return !isTokenExpired(token);
+    const user = this.getAdminUser();
+    return !!user && String(user.role).toUpperCase() === 'ADMIN';
   },
+
   async adminLogin(email, password, rememberMe = false) {
-    const url = `${API_BASE_URL}/api/auth/login`;
-    const response = await fetch(url, {
+    const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      credentials: 'include',
+      body: JSON.stringify({
+        email: email.trim().toLowerCase(),
+        password,
+      }),
     });
+
     const payload = await response.json().catch(() => ({}));
+
     if (!response.ok) {
       const msg = Array.isArray(payload.message)
         ? payload.message.join(' ')
-        : payload.message || 'Login failed.';
+        : payload.message || 'Admin login failed.';
       const err = new Error(msg);
       err.status = response.status;
       throw err;
     }
-    const token = payload?.data?.accessToken ?? payload?.accessToken ?? null;
-    if (!token) throw new Error('No access token received.');
-    if (!isAdminToken(token)) {
+
+    const admin = payload?.admin;
+    if (!admin) throw new Error('Invalid login response.');
+    if (String(admin.role).toUpperCase() !== 'ADMIN') {
       throw new Error('Access denied. You do not have admin privileges.');
     }
-    const claims = decodeJwt(token);
-    const user = {
-      id: claims?.sub,
-      name: payload?.data?.name ?? claims?.name ?? null,
-      email: payload?.data?.email ?? claims?.email ?? email,
-      role: claims?.role ?? 'admin',
-    };
+    if (admin.status && String(admin.status).toUpperCase() !== 'ACTIVE') {
+      throw new Error('Your admin account is not active.');
+    }
+
+    const token =
+      payload?.accessToken ?? payload?.token ?? payload?.data?.accessToken ?? null;
+
     const storage = rememberMe ? localStorage : sessionStorage;
-    storage.setItem(ADMIN_TOKEN_KEY, token);
-    storage.setItem(ADMIN_USER_KEY, JSON.stringify(user));
-    return { token, user };
+    const other = rememberMe ? sessionStorage : localStorage;
+    other.removeItem(ADMIN_TOKEN_KEY);
+    other.removeItem(ADMIN_USER_KEY);
+
+    if (token) storage.setItem(ADMIN_TOKEN_KEY, token);
+    storage.setItem(ADMIN_USER_KEY, JSON.stringify(admin));
+
+    return { token, user: admin };
   },
+
 
   getAdminUser() {
     const str =
       localStorage.getItem(ADMIN_USER_KEY) || sessionStorage.getItem(ADMIN_USER_KEY);
     try {
-      if (str) return JSON.parse(str);
+      return str ? JSON.parse(str) : null;
     } catch {
-      /* fall through */
+      return null;
     }
-    const demo = getDemoSession();
-    return demo ? { name: 'Admin', email: demo.email, role: demo.role } : null;
   },
 
   logout() {
@@ -177,7 +183,7 @@ export const adminService = {
   // ── Dashboard Stats ────────────────────────────────────────────────
   async getDashboardStats() {
     try {
-      return await request('/api/admin/stats');
+      return await request('/api/admin/dashboard/summary');
     } catch {
       return null;
     }

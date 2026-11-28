@@ -269,9 +269,9 @@ export default function AdminLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-useEffect(() => {
-  if (adminService.isLoggedIn()) navigate('/admin/dashboard', { replace: true });
-}, []);
+  useEffect(() => {
+    if (adminService.isLoggedIn()) navigate('/admin/dashboard', { replace: true });
+  }, []);
 
   const validate = () => {
     if (!email.trim()) return 'Email is required.';
@@ -292,29 +292,9 @@ useEffect(() => {
     }
 
     setLoading(true);
-
     try {
-      const isValidDemoAdmin =
-        email.trim().toLowerCase() === 'admin@evolvs.com' &&
-        password === 'Admin@123';
-
-      if (!isValidDemoAdmin) {
-        throw new Error('Invalid demo admin credentials.');
-      }
-
-      // Temporary demo session; does not touch user authentication
-      sessionStorage.setItem(
-        'evolvs_admin_demo_session',
-        JSON.stringify({
-          email: 'admin@evolvs.com',
-          role: 'admin',
-          isDemo: true,
-          loginAt: Date.now()
-        })
-      );
-
+      await adminService.adminLogin(email, password, rememberMe);
       navigate('/admin/dashboard', { replace: true });
-
     } catch (ex) {
       setError(ex.message || 'Login failed.');
     } finally {
@@ -349,7 +329,7 @@ useEffect(() => {
                   id="adm-email"
                   className="adm-login-input"
                   type="email"
-                  placeholder="admin@evolvs.com"
+                  placeholder="example@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"

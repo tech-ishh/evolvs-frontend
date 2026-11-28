@@ -423,31 +423,24 @@ export default function Dashboard() {
         <div className="adm-dash-grid">
           <StatCard
             label="Total Users"
-            value={loadingStats ? '…' : (s.totalUsers ?? s.users ?? '—')}
+            value={loadingStats ? '…' : (s.totalUsers ?? '—')}
             sub="Registered accounts"
             color="#AA45F5"
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#AA45F5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
           />
           <StatCard
             label="Total Posts"
-            value={loadingStats ? '…' : (s.totalPosts ?? s.posts ?? '—')}
+            value={loadingStats ? '…' : (s.totalPosts ?? '—')}
             sub="Published content"
             color="#22C55E"
             icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /></svg>}
           />
           <StatCard
-            label="Active Users"
-            value={loadingStats ? '…' : (s.activeUsers ?? s.active ?? '—')}
-            sub="Last 30 days"
-            color="#38BDF8"
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>}
-          />
-          <StatCard
-            label="Total Reaction"
-            value={loadingStats ? '…' : (s.pendingReports ?? s.reports ?? '—')}
-            sub="Require review"
+            label="Total Reactions"
+            value={loadingStats ? '…' : (s.totalReactions ?? '—')}
+            sub="Likes & reactions on posts"
             color="#F59E0B"
-            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
+            icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>}
           />
         </div>
 
